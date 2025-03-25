@@ -157,48 +157,59 @@
     }
 
     function loadEvaluations() {
-      // Altere o nome da coleção para a utilizada na avaliação de saúde (ex.: "avaliacaoSaude")
-      db.collection("avaliacaoSaude").orderBy("timestamp", "desc").get().then(snapshot => {
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          // Supondo que os dados do usuário estejam no objeto 'user'
-          const user = data.user || {};
-          const date = data.timestamp?.toDate().toLocaleString() || '---';
-          // Score e Classificação foram salvos diretamente
-          const score = data.scoreFinal || '-';
-          const classificacao = data.classificacao || '-';
-          // Exibe as respostas (demais campos) em uma string
-          // Você pode adaptar quais campos deseja mostrar
-          const respostas = Object.entries(data).filter(([key]) => !['user','scoreFinal','classificacao','timestamp'].includes(key))
-                             .map(([key, value]) => `${key}: ${value}`).join('\n');
+    db.collection("avaliacaoSaude").orderBy("timestamp", "desc").get().then(snapshot => {
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const date = data.timestamp?.toDate().toLocaleString() || '---';
 
-          allEvaluations.push({
-            nome: user.name || '-',
-            email: user.email || '-',
-            whatsapp: user.whatsapp || '-',
-            score,
-            classificacao,
-            data: date,
-            respostas
-          });
+        // Score e Classificação foram salvos diretamente em data
+        const score = data.scoreFinal || '-';
+        const classificacao = data.classificacao || '-';
 
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${user.name || '-'}</td>
-            <td>${user.email || '-'}</td>
-            <td>${user.whatsapp || '-'}</td>
-            <td>${score}</td>
-            <td>${classificacao}</td>
-            <td>${date}</td>
-            <td>${respostas.replace(/\n/g, '<br>')}</td>
-            <td><button class="btn btn-danger" onclick="deleteEvaluation('${doc.id}', this)">Excluir</button></td>
-          `;
-          tableBody.appendChild(tr);
+        // Ler nome, email e whatsapp no top-level
+        const nome = data.nome || '-';
+        const email = data.email || '-';
+        const whatsapp = data.whatsapp || '-';
+
+        // Exibe as demais respostas em uma string
+        // Excluímos 'nome', 'email', 'whatsapp', 'scoreFinal', 'classificacao', 'timestamp'
+        const respostas = Object.entries(data)
+          .filter(([key]) => ![
+            'nome','email','whatsapp','scoreFinal','classificacao','timestamp'
+          ].includes(key))
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('\n');
+
+        // Armazena no array para exportação CSV
+        allEvaluations.push({
+          nome,
+          email,
+          whatsapp,
+          score,
+          classificacao,
+          data: date,
+          respostas
         });
-      }).catch(error => {
-        console.error("Erro ao carregar as avaliações:", error);
+
+        // Monta a linha da tabela
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${nome}</td>
+          <td>${email}</td>
+          <td>${whatsapp}</td>
+          <td>${score}</td>
+          <td>${classificacao}</td>
+          <td>${date}</td>
+          <td>${respostas.replace(/\n/g, '<br>')}</td>
+          <td><button class="btn btn-danger" onclick="deleteEvaluation('${doc.id}', this)">Excluir</button></td>
+        `;
+        tableBody.appendChild(tr);
       });
-    }
+    }).catch(error => {
+      console.error("Erro ao carregar as avaliações:", error);
+    });
+  }
+
 
     function deleteEvaluation(docId, btn) {
       if (confirm("Tem certeza que deseja excluir esta avaliação?")) {
