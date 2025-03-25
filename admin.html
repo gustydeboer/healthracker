@@ -1,244 +1,605 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - Avaliações de Saúde</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Avaliação de Saúde</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <!-- Highcharts (Gauge) -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 1000px;
-      margin: 0 auto;
+      font-family: Arial, sans-serif;
       padding: 20px;
-      background-color: #f7f9fc;
-    }
-    .container {
-      background-color: white;
-      border-radius: 10px;
-      padding: 30px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: #f7f9fc;
+      text-align: center;
+      margin: 0 auto;
+      max-width: 800px;
     }
     h1 {
       color: #e91e63;
+      margin-bottom: 10px;
+    }
+    p.subtitle {
+      font-size: 16px;
+      margin-top: 0;
       margin-bottom: 30px;
+      color: #555;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      padding: 12px 15px;
+    .form-box {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 20px;
       text-align: left;
-      border-bottom: 1px solid #ddd;
-      vertical-align: top;
+      margin-bottom: 20px;
     }
-    th {
-      background-color: #f2f2f2;
-      font-weight: 600;
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
     }
-    tr:hover {
-      background-color: #f5f5f5;
-    }
-    .btn {
-      padding: 8px 12px;
-      background-color: #e91e63;
-      color: white;
-      border: none;
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
       border-radius: 4px;
+    }
+    .button {
+      background: #e91e63;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
       cursor: pointer;
-      font-size: 14px;
-      text-decoration: none;
-      display: inline-block;
-      margin-top: 10px;
     }
-    .btn:hover {
-      background-color: #c2185b;
+    .button:hover {
+      background: #c2185b;
     }
-    .btn-danger {
-      background-color: #e74c3c;
+    #assessment, #results-container {
+      display: none;
     }
-    .btn-danger:hover {
-      background-color: #c0392b;
+    .question-block {
+      margin-bottom: 15px;
     }
-    .login-form {
+    .gauge-container {
+      width: 100%;
       max-width: 400px;
       margin: 0 auto;
     }
-    .input-group {
-      margin-bottom: 15px;
+    .classification {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 20px;
     }
-    .input-group label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 600;
+    /* Indicadores horizontais (IC e IMC) */
+    .indicator-container {
+      margin-top: 30px;
     }
-    .input-group input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 16px;
+    .indicator-bar {
+      position: relative;
+      width: 400px;
+      height: 30px;
+      margin: 0 auto;
+      border-radius: 15px;
+      background: linear-gradient(to right, #0f0, #ff0, #f00);
     }
-    .hidden {
-      display: none;
+    .indicator-pointer {
+      position: absolute;
+      top: -10px;
+      width: 2px;
+      height: 50px;
+      background: #000;
+    }
+    .indicator-threshold {
+      position: absolute;
+      top: -10px;
+      width: 2px;
+      height: 50px;
+      background: #333;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Tela de Login -->
-    <div id="login-screen" class="login-form">
-      <h1>Acesso ao Painel Admin</h1>
-      <div class="input-group">
-        <label for="admin-password">Senha de Admin</label>
-        <input type="password" id="admin-password" placeholder="Digite a senha de admin">
-      </div>
-      <button id="login-btn" class="btn">Acessar</button>
+  <h1>Avaliação de Saúde</h1>
+  <p class="subtitle">
+    Responda às perguntas e obtenha um score de 0 a 100 (mais alto = melhor saúde).
+    Além disso, veja seu Índice de Conicidade (IC) e seu IMC.
+  </p>
+
+  <!-- ETAPA 1: Dados do Usuário -->
+  <div id="user-info" class="form-box">
+    <h2>Dados do Usuário</h2>
+    <label for="nome">Nome *</label>
+    <input type="text" id="nome" placeholder="Seu nome" />
+
+    <label for="email">Email *</label>
+    <input type="email" id="email" placeholder="seu-email@exemplo.com" />
+
+    <label for="whatsapp">WhatsApp (opcional)</label>
+    <input type="text" id="whatsapp" placeholder="(11) 9XXXX-XXXX" />
+
+    <button class="button" onclick="startAssessment()">Iniciar Avaliação</button>
+  </div>
+
+  <!-- ETAPA 2: Perguntas de Saúde -->
+  <div id="assessment" class="form-box">
+    <h2>Perguntas de Saúde</h2>
+    <!-- Perguntas em bloco único -->
+    <div class="question-block">
+      <label for="sexo">1. Qual o seu sexo biológico?</label>
+      <select id="sexo">
+        <option value="">Selecione</option>
+        <option value="masculino">Masculino</option>
+        <option value="feminino">Feminino</option>
+        <option value="outros">Outros</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="idade">2. Qual a sua Idade (em anos)?</label>
+      <input type="number" id="idade" />
+    </div>
+    <div class="question-block">
+      <label for="altura">3. Altura (em metros. ex: 1.65)</label>
+      <input type="text" id="altura" />
+    </div>
+    <div class="question-block">
+      <label for="peso">4. Qual o seu Peso (em kg)?</label>
+      <input type="number" id="peso" />
+    </div>
+    <div class="question-block">
+      <label for="calca">5. Tamanho da calça (BR)</label>
+      <input type="text" id="calca" />
+    </div>
+    <div class="question-block">
+      <label for="dores">6. Sente dores frequentes no corpo?</label>
+      <select id="dores">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="atividadeFisica">7. Frequência de atividade física?</label>
+      <select id="atividadeFisica">
+        <option value="">Selecione</option>
+        <option value="Nunca">Nunca</option>
+        <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
+        <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="faltaFolego">8. Falta de fôlego ao subir escadas?</label>
+      <select id="faltaFolego">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="dorme">9. Dorme pelo menos 7h por noite?</label>
+      <select id="dorme">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="ansiedade">10. Se sentiu ansioso ou deprimido frequentemente nos últimos 2 meses?</label>
+      <select id="ansiedade">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="alcool">11. Frequência do consumo de álcool?</label>
+      <select id="alcool">
+        <option value="">Selecione</option>
+        <option value="Nunca">Nunca</option>
+        <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
+        <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="tabaco">12. Fuma ou usa produtos de tabaco?</label>
+      <select id="tabaco">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="frutasVegetais">13. Come frutas e vegetais pelo menos 5x por semana?</label>
+      <select id="frutasVegetais">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="fastFood">14. Consome fast food ou ultraprocessados mais de 3x por semana?</label>
+      <select id="fastFood">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
     </div>
 
-    <!-- Painel Admin -->
-    <div id="admin-panel" class="hidden">
-      <h1>Painel Admin - Avaliações de Saúde</h1>
-      <button class="btn" onclick="exportToCSV()">Exportar para CSV</button>
-      <table id="avaliacoes-table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Email</th>
-            <th>WhatsApp</th>
-            <th>Score</th>
-            <th>Classificação</th>
-            <th>Data</th>
-            <th>Respostas</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+    <button class="button" onclick="submitAnswers()">Enviar Respostas</button>
+  </div>
+
+  <!-- ETAPA 3: Resultado (Gauge + Classificação + IC + IMC) -->
+  <div id="results-container" class="form-box">
+    <h2>Resultado da Avaliação</h2>
+    <!-- Gauge do Score Inverso -->
+    <div class="gauge-container">
+      <div id="gauge-chart" style="height: 300px;"></div>
+    </div>
+    <div id="score-value" style="font-size: 24px; margin-top: 20px;"></div>
+    <div class="classification" id="classification"></div>
+
+    <!-- Indicador de IC -->
+    <div class="indicator-container" id="ic-indicator">
+      <h3>Índice de Conicidade (IC)</h3>
+      <div>Valor IC: <span id="ic-value"></span></div>
+      <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
+        (Valores acima de 1,25 p/ homens e 1,18 p/ mulheres indicam maior risco)
+      </div>
+      <div id="ic-bar-container"
+           style="position: relative; width: 400px; height: 30px; margin: 0 auto; border-radius: 15px;
+                  background: linear-gradient(to right, #0f0, #ff0, #f00);">
+        <div id="ic-pointer"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #000;"></div>
+        <div id="ic-threshold"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div style="position: absolute; left: 10px; top: 5px; color: #333; font-size: 12px;">Menor Risco</div>
+        <div style="position: absolute; right: 10px; top: 5px; color: #333; font-size: 12px;">Maior Risco</div>
+      </div>
+    </div>
+
+    <!-- Indicador de IMC -->
+    <div class="indicator-container" id="bmi-indicator">
+      <h3>Risco Relacionado ao IMC</h3>
+      <div style="font-size:14px; color:#666; margin-bottom:10px;">
+        IMC: <span id="bmi-value"></span>
+      </div>
+      <div id="bmi-bar-container"
+           style="position: relative; width: 400px; height: 30px; margin: 0 auto; border-radius: 15px;
+                  background: linear-gradient(to right, #0f0, #ff0, #f00);">
+        <div id="bmi-pointer"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #000;"></div>
+        <!-- Thresholds de exemplo: 18.5, 25, 30 -->
+        <div id="bmi-threshold-18-5"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div id="bmi-threshold-25"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div id="bmi-threshold-30"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div style="position: absolute; left: 10px; top: 5px; color: #333; font-size: 12px;">Menor Risco</div>
+        <div style="position: absolute; right: 10px; top: 5px; color: #333; font-size: 12px;">Maior Risco</div>
+      </div>
     </div>
   </div>
 
   <script>
-    // Substitua pelo seu firebaseConfig obtido na plataforma do Firebase
+    // -----------------------------------
+    // 1) Configuração do Firebase
+    // -----------------------------------
     const firebaseConfig = {
-      	apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
+     	apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
   	authDomain: "htracker-101.firebaseapp.com",
   	projectId: "htracker-101",
   	storageBucket: "htracker-101.firebasestorage.app",
   	messagingSenderId: "77241327034",
   	appId: "1:77241327034:web:325d4f27f194b8a5cdd183"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const ADMIN_PASSWORD = "senhasecreta123";
-    const loginScreen = document.getElementById('login-screen');
-    const adminPanel = document.getElementById('admin-panel');
-    const passwordInput = document.getElementById('admin-password');
-    const loginButton = document.getElementById('login-btn');
-    const tableBody = document.getElementById('avaliacoes-table').getElementsByTagName('tbody')[0];
-    let allEvaluations = [];
+    // -----------------------------------
+    // 2) Lógica de Exibição de Telas
+    // -----------------------------------
+    function startAssessment() {
+      const nome = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
 
-    loginButton.addEventListener('click', authenticate);
-
-    function authenticate() {
-      const input = passwordInput.value;
-      if (input === ADMIN_PASSWORD) {
-        loginScreen.classList.add('hidden');
-        adminPanel.classList.remove('hidden');
-        loadEvaluations();
-      } else {
-        alert('Senha incorreta.');
+      if (!nome || !email) {
+        alert("Por favor, preencha ao menos o nome e o email.");
+        return;
       }
+
+      // Oculta user-info, exibe assessment
+      document.getElementById('user-info').style.display = 'none';
+      document.getElementById('assessment').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function loadEvaluations() {
-    db.collection("avaliacaoSaude").orderBy("timestamp", "desc").get().then(snapshot => {
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const date = data.timestamp?.toDate().toLocaleString() || '---';
+    async function submitAnswers() {
+      // Validação: verificar se todos os campos foram preenchidos
+      const requiredIds = [
+        'sexo','idade','altura','peso','calca','dores','atividadeFisica',
+        'faltaFolego','dorme','ansiedade','alcool','tabaco','frutasVegetais','fastFood'
+      ];
+      for (let id of requiredIds) {
+        const val = document.getElementById(id).value;
+        if (!val) {
+          alert("Responda todas as perguntas antes de enviar.");
+          return;
+        }
+      }
 
-        // Score e Classificação foram salvos diretamente em data
-        const score = data.scoreFinal || '-';
-        const classificacao = data.classificacao || '-';
+      // Coleta dados
+      const answers = {
+        nome: document.getElementById('nome').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        whatsapp: document.getElementById('whatsapp').value.trim(),
+        sexo: document.getElementById('sexo').value,
+        idade: document.getElementById('idade').value,
+        altura: document.getElementById('altura').value,
+        peso: document.getElementById('peso').value,
+        calca: document.getElementById('calca').value,
+        dores: document.getElementById('dores').value,
+        atividadeFisica: document.getElementById('atividadeFisica').value,
+        faltaFolego: document.getElementById('faltaFolego').value,
+        dorme: document.getElementById('dorme').value,
+        ansiedade: document.getElementById('ansiedade').value,
+        alcool: document.getElementById('alcool').value,
+        tabaco: document.getElementById('tabaco').value,
+        frutasVegetais: document.getElementById('frutasVegetais').value,
+        fastFood: document.getElementById('fastFood').value
+      };
 
-        // Ler nome, email e whatsapp no top-level
-        const nome = data.nome || '-';
-        const email = data.email || '-';
-        const whatsapp = data.whatsapp || '-';
+      // Calcula score, IC, IMC
+      const { scoreFinal, classificacao, icValue, imcValue } = calcularScoreSaude(answers);
 
-        // Exibe as demais respostas em uma string
-        // Excluímos 'nome', 'email', 'whatsapp', 'scoreFinal', 'classificacao', 'timestamp'
-        const respostas = Object.entries(data)
-          .filter(([key]) => ![
-            'nome','email','whatsapp','scoreFinal','classificacao','timestamp'
-          ].includes(key))
-          .map(([key, value]) => `${key}: ${value}`)
-          .join('\n');
+      // Salva no Firebase
+      const payload = {
+        ...answers,
+        scoreFinal,
+        classificacao,
+        icValue,
+        imcValue,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      try {
+        await db.collection("avaliacaoSaude").add(payload);
+      } catch (err) {
+        console.error("Erro ao salvar no Firestore:", err);
+      }
 
-        // Armazena no array para exportação CSV
-        allEvaluations.push({
-          nome,
-          email,
-          whatsapp,
-          score,
-          classificacao,
-          data: date,
-          respostas
-        });
+      // Exibe resultado
+      showResults(scoreFinal, classificacao, icValue, imcValue, answers.sexo);
+    }
 
-        // Monta a linha da tabela
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${nome}</td>
-          <td>${email}</td>
-          <td>${whatsapp}</td>
-          <td>${score}</td>
-          <td>${classificacao}</td>
-          <td>${date}</td>
-          <td>${respostas.replace(/\n/g, '<br>')}</td>
-          <td><button class="btn btn-danger" onclick="deleteEvaluation('${doc.id}', this)">Excluir</button></td>
-        `;
-        tableBody.appendChild(tr);
+    function showResults(score, classification, icValue, imcValue, sexo) {
+      // Oculta assessment, exibe results
+      document.getElementById('assessment').style.display = 'none';
+      document.getElementById('results-container').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Atualiza textos do Score
+      document.getElementById('score-value').innerText = `Score: ${score}/100`;
+      document.getElementById('classification').innerText = classification;
+
+      // Cria o Gauge via Highcharts (Score Inverso)
+      Highcharts.chart('gauge-chart', {
+        chart: {
+          type: 'solidgauge'
+        },
+        title: {
+          text: `Seu Score: ${score}`
+        },
+        pane: {
+          center: ['50%', '85%'],
+          size: '140%',
+          startAngle: -90,
+          endAngle: 90,
+          background: {
+            backgroundColor: '#EEE',
+            innerRadius: '60%',
+            outerRadius: '100%',
+            shape: 'arc'
+          }
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          lineWidth: 0,
+          tickPositions: [],
+          // stops invertidas: 0-40 (vermelho), 40-65 (amarelo), 65-80 (verde claro), 80-100 (verde escuro)
+          stops: [
+            [0.40, '#ff0000'],
+            [0.65, '#ffcc00'],
+            [0.80, '#a0d911'],
+            [1.00, '#008000']
+          ]
+        },
+        plotOptions: {
+          solidgauge: {
+            dataLabels: {
+              enabled: true,
+              format: '<div style="text-align:center"><span style="font-size:24px">{y}</span><br/><span style="font-size:12px;opacity:0.4">pontos</span></div>',
+              y: -30,
+              borderWidth: 0,
+              useHTML: true
+            }
+          }
+        },
+        series: [{
+          name: 'Score',
+          data: [score],
+          tooltip: {
+            valueSuffix: ' pontos'
+          }
+        }]
       });
-    }).catch(error => {
-      console.error("Erro ao carregar as avaliações:", error);
-    });
-  }
 
+      // Exibe Indicador de IC
+      showICIndicator(icValue, sexo);
 
-    function deleteEvaluation(docId, btn) {
-      if (confirm("Tem certeza que deseja excluir esta avaliação?")) {
-        db.collection("avaliacaoSaude").doc(docId).delete().then(() => {
-          const row = btn.closest('tr');
-          row.remove();
-        }).catch(err => {
-          console.error("Erro ao excluir avaliação:", err);
-        });
-      }
+      // Exibe Indicador de IMC
+      showBMIIndicator(imcValue);
     }
 
-    function exportToCSV() {
-      if (allEvaluations.length === 0) return alert('Nenhum dado para exportar.');
+    // -----------------------------------
+    // 3) Funções de Cálculo (Score, IC, IMC) e Indicadores
+    // -----------------------------------
 
-      const replacer = (key, value) => value === null ? '' : value;
-      const header = Object.keys(allEvaluations[0]);
-      const csv = [
-        header.join(','),
-        ...allEvaluations.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(','))
-      ].join('\r\n');
+    // A) Cálculo do Score Inverso, IC e IMC
+    function calcularScoreSaude(answers) {
+      // Mapeamento Tamanho Calça -> circunferência (metros)
+      const calcaToCirc = {
+        36: 0.72, 38: 0.76, 40: 0.80, 42: 0.84,
+        44: 0.88, 46: 0.92, 48: 0.96, 50: 1.00,
+        52: 1.04, 54: 1.08, 56: 1.12, 58: 1.16,
+        60: 1.20
+      };
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', 'avaliacoes_saude.csv');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const sexo = (answers.sexo || "").toLowerCase();
+      const idade = parseInt(answers.idade, 10) || 0;
+      const peso = parseFloat(answers.peso) || 0;
+      const altura = parseFloat(answers.altura) || 1;
+      const calca = parseInt(answers.calca, 10);
+
+      // Circunferência em metros
+      const circ_m = calcaToCirc[calca] || 0;
+
+      // Calcular IMC
+      const imcValue = peso / (altura * altura);
+
+      // Faixa de idade (0 a 3)
+      let ageScore = 0;
+      if (idade < 35) ageScore = 0;
+      else if (idade < 50) ageScore = 1;
+      else if (idade < 65) ageScore = 2;
+      else ageScore = 3;
+
+      // IC (Índice de Conicidade)
+      // formula = circ_m / (0.109 * sqrt(peso/altura))
+      const icValue = circ_m / (0.109 * Math.sqrt(peso / altura));
+
+      // circScore: 2 se IC >= 1.25 (masc) ou 1.18 (fem)
+      let circScore = 0;
+      if (sexo === "masculino" && icValue >= 1.25) circScore = 2;
+      if (sexo === "feminino" && icValue >= 1.18) circScore = 2;
+
+      // Subtotal 1 a 5
+      const subtotal_5 = circScore + ageScore; // máx 5
+
+      // Perguntas 6 a 14
+      const questionPoints = {
+        dores: { "Sim": 2, "Não": 0 },
+        atividadeFisica: { "Nunca": 2, "1 ou 2 vezes por semana": 1, "3 ou mais vezes por semana": 0 },
+        faltaFolego: { "Sim": 2, "Não": 0 },
+        dorme: { "Sim": 0, "Não": 2 },
+        ansiedade: { "Sim": 2, "Não": 0 },
+        alcool: { "Nunca": 0, "1 ou 2 vezes por semana": 1, "3 ou mais vezes por semana": 2 },
+        tabaco: { "Sim": 2, "Não": 0 },
+        frutasVegetais: { "Sim": 0, "Não": 2 },
+        fastFood: { "Sim": 2, "Não": 0 }
+      };
+
+      let subtotal_9 = 0;
+      subtotal_9 += questionPoints.dores[answers.dores] || 0;
+      subtotal_9 += questionPoints.atividadeFisica[answers.atividadeFisica] || 0;
+      subtotal_9 += questionPoints.faltaFolego[answers.faltaFolego] || 0;
+      subtotal_9 += questionPoints.dorme[answers.dorme] || 0;
+      subtotal_9 += questionPoints.ansiedade[answers.ansiedade] || 0;
+      subtotal_9 += questionPoints.alcool[answers.alcool] || 0;
+      subtotal_9 += questionPoints.tabaco[answers.tabaco] || 0;
+      subtotal_9 += questionPoints.frutasVegetais[answers.frutasVegetais] || 0;
+      subtotal_9 += questionPoints.fastFood[answers.fastFood] || 0;
+
+      // total bruto (0 a 23)
+      const totalBruto = subtotal_5 + subtotal_9;
+      const maxPossivel = 23;
+      const scoreOriginal = Math.round((totalBruto / maxPossivel) * 100);
+
+      // Score Inverso
+      const scoreInverso = 100 - scoreOriginal;
+
+      // Classificação
+      let classificacao;
+      if (scoreInverso >= 80) classificacao = "Bem Estar";
+      else if (scoreInverso >= 65) classificacao = "Cuidados";
+      else if (scoreInverso >= 40) classificacao = "Atenção";
+      else classificacao = "Risco";
+
+      return {
+        scoreFinal: scoreInverso,
+        classificacao,
+        icValue,
+        imcValue
+      };
+    }
+
+    // B) Indicador do IC
+    function showICIndicator(icValue, sexo) {
+      document.getElementById('ic-value').textContent = icValue.toFixed(2);
+
+      // Determina threshold
+      let threshold = (sexo === 'masculino') ? 1.25 : 1.18;
+
+      // Range de IC para exibir na barra
+      const minIC = 1.0;
+      const maxIC = 1.4;
+      const containerWidth = 400;
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      // Fração do valor do IC
+      const pointerFraction = clamp((icValue - minIC)/(maxIC - minIC), 0, 1);
+      const pointerLeft = pointerFraction * containerWidth;
+      const pointerDiv = document.getElementById('ic-pointer');
+      pointerDiv.style.left = pointerLeft + 'px';
+
+      // Threshold
+      const thresholdFraction = clamp((threshold - minIC)/(maxIC - minIC), 0, 1);
+      const thresholdLeft = thresholdFraction * containerWidth;
+      const thresholdDiv = document.getElementById('ic-threshold');
+      thresholdDiv.style.left = thresholdLeft + 'px';
+    }
+
+    // C) Indicador de IMC
+    function showBMIIndicator(bmiValue) {
+      document.getElementById('bmi-value').textContent = bmiValue.toFixed(1);
+
+      const minBMI = 15;
+      const maxBMI = 40;
+      const containerWidth = 400;
+
+      function clamp(v, mn, mx) {
+        return Math.max(mn, Math.min(mx, v));
+      }
+
+      // Fração do IMC do usuário
+      const fraction = (bmiValue - minBMI) / (maxBMI - minBMI);
+      const pointerFraction = clamp(fraction, 0, 1);
+      const pointerLeft = pointerFraction * containerWidth;
+      document.getElementById('bmi-pointer').style.left = pointerLeft + 'px';
+
+      // Posicionar thresholds (18.5, 25, 30)
+      function setThresholdPosition(elementId, thresholdValue) {
+        const thrFrac = clamp((thresholdValue - minBMI)/(maxBMI - minBMI), 0, 1);
+        const thrLeft = thrFrac * containerWidth;
+        document.getElementById(elementId).style.left = thrLeft + 'px';
+      }
+
+      setThresholdPosition('bmi-threshold-18-5', 18.5);
+      setThresholdPosition('bmi-threshold-25', 25);
+      setThresholdPosition('bmi-threshold-30', 30);
     }
   </script>
 </body>
