@@ -91,21 +91,26 @@
       height: 30px;
       margin: 0 auto;
       border-radius: 15px;
-      background: linear-gradient(to right, #0f0, #ff0, #f00);
+      background: linear-gradient(to right, #0f0, #ff0, #f00); /* verde -> amarelo -> vermelho */
     }
     .indicator-pointer {
       position: absolute;
-      top: -10px;
-      width: 2px;
-      height: 50px;
-      background: #000;
+      top: -10px;       /* faz a setinha ficar acima da barra */
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-bottom: 10px solid #000; /* seta preta */
     }
-    .indicator-threshold {
+    .indicator-label {
       position: absolute;
-      top: -10px;
-      width: 2px;
-      height: 50px;
-      background: #333;
+      top: 0px;         /* logo abaixo da seta */
+      transform: translateX(-50%);
+      margin-top: 20px; /* empurra texto para baixo da seta */
+      background: none;
+      color: #000;
+      font-size: 14px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -113,7 +118,7 @@
   <h1>Avaliação de Saúde</h1>
   <p class="subtitle">
     Responda às perguntas e obtenha um score de 0 a 100 (mais alto = melhor saúde).
-    Além disso, veja seu Índice de Conicidade (IC) e seu IMC.
+    Veja também seu Índice de Conicidade (IC) e seu IMC em barras horizontais.
   </p>
 
   <!-- ETAPA 1: Dados do Usuário -->
@@ -252,18 +257,11 @@
     <div class="indicator-container" id="ic-indicator">
       <h3>Índice de Conicidade (IC)</h3>
       <div>Valor IC: <span id="ic-value"></span></div>
-      <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
-        (Valores acima de 1,25 p/ homens e 1,18 p/ mulheres indicam maior risco)
-      </div>
-      <div id="ic-bar-container"
-           style="position: relative; width: 400px; height: 30px; margin: 0 auto; border-radius: 15px;
-                  background: linear-gradient(to right, #0f0, #ff0, #f00);">
-        <div id="ic-pointer"
-             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #000;"></div>
-        <div id="ic-threshold"
-             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
-        <div style="position: absolute; left: 10px; top: 5px; color: #333; font-size: 12px;">Menor Risco</div>
-        <div style="position: absolute; right: 10px; top: 5px; color: #333; font-size: 12px;">Maior Risco</div>
+      <div class="indicator-bar" id="ic-bar-container">
+        <!-- Ponteiro (seta) -->
+        <div class="indicator-pointer" id="ic-pointer"></div>
+        <!-- Rótulo abaixo da seta -->
+        <div class="indicator-label" id="ic-label"></div>
       </div>
     </div>
 
@@ -273,20 +271,9 @@
       <div style="font-size:14px; color:#666; margin-bottom:10px;">
         IMC: <span id="bmi-value"></span>
       </div>
-      <div id="bmi-bar-container"
-           style="position: relative; width: 400px; height: 30px; margin: 0 auto; border-radius: 15px;
-                  background: linear-gradient(to right, #0f0, #ff0, #f00);">
-        <div id="bmi-pointer"
-             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #000;"></div>
-        <!-- Thresholds de exemplo: 18.5, 25, 30 -->
-        <div id="bmi-threshold-18-5"
-             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
-        <div id="bmi-threshold-25"
-             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
-        <div id="bmi-threshold-30"
-             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
-        <div style="position: absolute; left: 10px; top: 5px; color: #333; font-size: 12px;">Menor Risco</div>
-        <div style="position: absolute; right: 10px; top: 5px; color: #333; font-size: 12px;">Maior Risco</div>
+      <div class="indicator-bar" id="bmi-bar-container">
+        <div class="indicator-pointer" id="bmi-pointer"></div>
+        <div class="indicator-label" id="bmi-label"></div>
       </div>
     </div>
   </div>
@@ -296,12 +283,12 @@
     // 1) Configuração do Firebase
     // -----------------------------------
     const firebaseConfig = {
-     	apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
-  	authDomain: "htracker-101.firebaseapp.com",
-  	projectId: "htracker-101",
-  	storageBucket: "htracker-101.firebasestorage.app",
-  	messagingSenderId: "77241327034",
-  	appId: "1:77241327034:web:325d4f27f194b8a5cdd183"
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_PROJETO.firebaseapp.com",
+      projectId: "SEU_PROJETO",
+      storageBucket: "SEU_PROJETO.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -474,7 +461,7 @@
       // Circunferência em metros
       const circ_m = calcaToCirc[calca] || 0;
 
-      // Calcular IMC
+      // IMC
       const imcValue = peso / (altura * altura);
 
       // Faixa de idade (0 a 3)
@@ -543,39 +530,51 @@
       };
     }
 
-    // B) Indicador do IC
+    // B) Indicador do IC (apenas 1 ponteiro + rótulo)
     function showICIndicator(icValue, sexo) {
+      // Mostra valor
       document.getElementById('ic-value').textContent = icValue.toFixed(2);
 
-      // Determina threshold
-      let threshold = (sexo === 'masculino') ? 1.25 : 1.18;
-
-      // Range de IC para exibir na barra
+      // Barra vai de 1.0 a 1.4
       const minIC = 1.0;
       const maxIC = 1.4;
       const containerWidth = 400;
 
+      // Fração do IC
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
       }
+      const fraction = clamp((icValue - minIC) / (maxIC - minIC), 0, 1);
+      const pointerLeft = fraction * containerWidth;
 
-      // Fração do valor do IC
-      const pointerFraction = clamp((icValue - minIC)/(maxIC - minIC), 0, 1);
-      const pointerLeft = pointerFraction * containerWidth;
+      // Move ponteiro (seta)
       const pointerDiv = document.getElementById('ic-pointer');
       pointerDiv.style.left = pointerLeft + 'px';
 
-      // Threshold
-      const thresholdFraction = clamp((threshold - minIC)/(maxIC - minIC), 0, 1);
-      const thresholdLeft = thresholdFraction * containerWidth;
-      const thresholdDiv = document.getElementById('ic-threshold');
-      thresholdDiv.style.left = thresholdLeft + 'px';
+      // Classificar: Baixo, Médio ou Alto risco
+      // Definindo faixas de exemplo (você pode ajustar)
+      let riskLabel = "Baixo Risco";
+      if (sexo === "masculino") {
+        // homem: <1.20 (baixo), 1.20-1.25 (médio), >=1.25 (alto)
+        if (icValue >= 1.25) riskLabel = "Alto Risco";
+        else if (icValue >= 1.20) riskLabel = "Médio Risco";
+      } else {
+        // mulher: <1.13 (baixo), 1.13-1.18 (médio), >=1.18 (alto)
+        if (icValue >= 1.18) riskLabel = "Alto Risco";
+        else if (icValue >= 1.13) riskLabel = "Médio Risco";
+      }
+
+      // Posiciona label abaixo da seta
+      const labelDiv = document.getElementById('ic-label');
+      labelDiv.style.left = pointerLeft + 'px';
+      labelDiv.textContent = riskLabel;
     }
 
-    // C) Indicador de IMC
+    // C) Indicador de IMC (apenas 1 ponteiro + rótulo)
     function showBMIIndicator(bmiValue) {
       document.getElementById('bmi-value').textContent = bmiValue.toFixed(1);
 
+      // Barra de 15 a 40
       const minBMI = 15;
       const maxBMI = 40;
       const containerWidth = 400;
@@ -583,23 +582,22 @@
       function clamp(v, mn, mx) {
         return Math.max(mn, Math.min(mx, v));
       }
+      const fraction = clamp((bmiValue - minBMI)/(maxBMI - minBMI), 0, 1);
+      const pointerLeft = fraction * containerWidth;
 
-      // Fração do IMC do usuário
-      const fraction = (bmiValue - minBMI) / (maxBMI - minBMI);
-      const pointerFraction = clamp(fraction, 0, 1);
-      const pointerLeft = pointerFraction * containerWidth;
-      document.getElementById('bmi-pointer').style.left = pointerLeft + 'px';
+      // Move ponteiro (seta)
+      const pointerDiv = document.getElementById('bmi-pointer');
+      pointerDiv.style.left = pointerLeft + 'px';
 
-      // Posicionar thresholds (18.5, 25, 30)
-      function setThresholdPosition(elementId, thresholdValue) {
-        const thrFrac = clamp((thresholdValue - minBMI)/(maxBMI - minBMI), 0, 1);
-        const thrLeft = thrFrac * containerWidth;
-        document.getElementById(elementId).style.left = thrLeft + 'px';
-      }
+      // Classificar IMC: <25 (baixo), 25-30 (médio), >30 (alto)
+      let riskLabel = "Baixo Risco";
+      if (bmiValue > 30) riskLabel = "Alto Risco";
+      else if (bmiValue >= 25) riskLabel = "Médio Risco";
 
-      setThresholdPosition('bmi-threshold-18-5', 18.5);
-      setThresholdPosition('bmi-threshold-25', 25);
-      setThresholdPosition('bmi-threshold-30', 30);
+      // Posiciona label abaixo da seta
+      const labelDiv = document.getElementById('bmi-label');
+      labelDiv.style.left = pointerLeft + 'px';
+      labelDiv.textContent = riskLabel;
     }
   </script>
 </body>
