@@ -81,11 +81,40 @@
       font-weight: bold;
       margin-top: 20px;
     }
+    /* Indicadores horizontais (IC e IMC) */
+    .indicator-container {
+      margin-top: 30px;
+    }
+    .indicator-bar {
+      position: relative;
+      width: 400px;
+      height: 30px;
+      margin: 0 auto;
+      border-radius: 15px;
+      background: linear-gradient(to right, #0f0, #ff0, #f00);
+    }
+    .indicator-pointer {
+      position: absolute;
+      top: -10px;
+      width: 2px;
+      height: 50px;
+      background: #000;
+    }
+    .indicator-threshold {
+      position: absolute;
+      top: -10px;
+      width: 2px;
+      height: 50px;
+      background: #333;
+    }
   </style>
 </head>
 <body>
   <h1>Avaliação de Saúde</h1>
-  <p class="subtitle">Responda às perguntas e obtenha um score de 0 a 100, onde notas mais altas indicam melhor bem-estar.</p>
+  <p class="subtitle">
+    Responda às perguntas e obtenha um score de 0 a 100 (mais alto = melhor saúde).
+    Além disso, veja seu Índice de Conicidade (IC) e seu IMC.
+  </p>
 
   <!-- ETAPA 1: Dados do Usuário -->
   <div id="user-info" class="form-box">
@@ -105,7 +134,7 @@
   <!-- ETAPA 2: Perguntas de Saúde -->
   <div id="assessment" class="form-box">
     <h2>Perguntas de Saúde</h2>
-    <!-- Perguntas em bloco único; você pode dividir em etapas se desejar -->
+    <!-- Perguntas em bloco único -->
     <div class="question-block">
       <label for="sexo">1. Qual o seu sexo biológico?</label>
       <select id="sexo">
@@ -209,15 +238,57 @@
     <button class="button" onclick="submitAnswers()">Enviar Respostas</button>
   </div>
 
-  <!-- ETAPA 3: Resultado (Gauge + Classificação) -->
+  <!-- ETAPA 3: Resultado (Gauge + Classificação + IC + IMC) -->
   <div id="results-container" class="form-box">
     <h2>Resultado da Avaliação</h2>
+    <!-- Gauge do Score Inverso -->
     <div class="gauge-container">
       <div id="gauge-chart" style="height: 300px;"></div>
     </div>
     <div id="score-value" style="font-size: 24px; margin-top: 20px;"></div>
     <div class="classification" id="classification"></div>
-    <p id="message"></p>
+
+    <!-- Indicador de IC -->
+    <div class="indicator-container" id="ic-indicator">
+      <h3>Índice de Conicidade (IC)</h3>
+      <div>Valor IC: <span id="ic-value"></span></div>
+      <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
+        (Valores acima de 1,25 p/ homens e 1,18 p/ mulheres indicam maior risco)
+      </div>
+      <div id="ic-bar-container"
+           style="position: relative; width: 400px; height: 30px; margin: 0 auto; border-radius: 15px;
+                  background: linear-gradient(to right, #0f0, #ff0, #f00);">
+        <div id="ic-pointer"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #000;"></div>
+        <div id="ic-threshold"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div style="position: absolute; left: 10px; top: 5px; color: #333; font-size: 12px;">Menor Risco</div>
+        <div style="position: absolute; right: 10px; top: 5px; color: #333; font-size: 12px;">Maior Risco</div>
+      </div>
+    </div>
+
+    <!-- Indicador de IMC -->
+    <div class="indicator-container" id="bmi-indicator">
+      <h3>Risco Relacionado ao IMC</h3>
+      <div style="font-size:14px; color:#666; margin-bottom:10px;">
+        IMC: <span id="bmi-value"></span>
+      </div>
+      <div id="bmi-bar-container"
+           style="position: relative; width: 400px; height: 30px; margin: 0 auto; border-radius: 15px;
+                  background: linear-gradient(to right, #0f0, #ff0, #f00);">
+        <div id="bmi-pointer"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #000;"></div>
+        <!-- Thresholds de exemplo: 18.5, 25, 30 -->
+        <div id="bmi-threshold-18-5"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div id="bmi-threshold-25"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div id="bmi-threshold-30"
+             style="position: absolute; top: -10px; width: 2px; height: 50px; background: #333;"></div>
+        <div style="position: absolute; left: 10px; top: 5px; color: #333; font-size: 12px;">Menor Risco</div>
+        <div style="position: absolute; right: 10px; top: 5px; color: #333; font-size: 12px;">Maior Risco</div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -225,12 +296,12 @@
     // 1) Configuração do Firebase
     // -----------------------------------
     const firebaseConfig = {
-      apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
-      authDomain: "htracker-101.firebaseapp.com",
-      projectId: "htracker-101",
-      storageBucket: "htracker-101.firebasestorage.app",
-      messagingSenderId: "77241327034",
-      appId: "1:77241327034:web:325d4f27f194b8a5cdd183"
+     	apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
+  	authDomain: "htracker-101.firebaseapp.com",
+  	projectId: "htracker-101",
+  	storageBucket: "htracker-101.firebasestorage.app",
+  	messagingSenderId: "77241327034",
+  	appId: "1:77241327034:web:325d4f27f194b8a5cdd183"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -247,7 +318,7 @@
         return;
       }
 
-      // Oculta user-info e exibe assessment
+      // Oculta user-info, exibe assessment
       document.getElementById('user-info').style.display = 'none';
       document.getElementById('assessment').style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -267,7 +338,7 @@
         }
       }
 
-      // Coleta dos dados
+      // Coleta dados
       const answers = {
         nome: document.getElementById('nome').value.trim(),
         email: document.getElementById('email').value.trim(),
@@ -288,14 +359,16 @@
         fastFood: document.getElementById('fastFood').value
       };
 
-      // Calcula score usando a função inversa
-      const { scoreFinal, classificacao } = calcularScoreSaude(answers);
+      // Calcula score, IC, IMC
+      const { scoreFinal, classificacao, icValue, imcValue } = calcularScoreSaude(answers);
 
       // Salva no Firebase
       const payload = {
         ...answers,
         scoreFinal,
         classificacao,
+        icValue,
+        imcValue,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
       try {
@@ -305,20 +378,20 @@
       }
 
       // Exibe resultado
-      showResults(scoreFinal, classificacao);
+      showResults(scoreFinal, classificacao, icValue, imcValue, answers.sexo);
     }
 
-    function showResults(score, classification) {
-      // Oculta assessment e exibe results
+    function showResults(score, classification, icValue, imcValue, sexo) {
+      // Oculta assessment, exibe results
       document.getElementById('assessment').style.display = 'none';
       document.getElementById('results-container').style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Atualiza textos
+      // Atualiza textos do Score
       document.getElementById('score-value').innerText = `Score: ${score}/100`;
       document.getElementById('classification').innerText = classification;
 
-      // Cria o Gauge via Highcharts com cores invertidas
+      // Cria o Gauge via Highcharts (Score Inverso)
       Highcharts.chart('gauge-chart', {
         chart: {
           type: 'solidgauge'
@@ -343,12 +416,12 @@
           max: 100,
           lineWidth: 0,
           tickPositions: [],
-          // Cores invertidas: notas baixas (risco) em vermelho; notas altas (bem estar) em verde.
+          // stops invertidas: 0-40 (vermelho), 40-65 (amarelo), 65-80 (verde claro), 80-100 (verde escuro)
           stops: [
-            [0.40, '#ff0000'],  // até 40 => vermelho (risco)
-            [0.65, '#ffcc00'],  // 40-65 => amarelo (atenção)
-            [0.80, '#a0d911'],  // 65-80 => verde claro (cuidados)
-            [1.00, '#008000']   // 80-100 => verde escuro (bem estar)
+            [0.40, '#ff0000'],
+            [0.65, '#ffcc00'],
+            [0.80, '#a0d911'],
+            [1.00, '#008000']
           ]
         },
         plotOptions: {
@@ -370,11 +443,19 @@
           }
         }]
       });
+
+      // Exibe Indicador de IC
+      showICIndicator(icValue, sexo);
+
+      // Exibe Indicador de IMC
+      showBMIIndicator(imcValue);
     }
 
     // -----------------------------------
-    // 3) Função de Cálculo do Score Inverso
+    // 3) Funções de Cálculo (Score, IC, IMC) e Indicadores
     // -----------------------------------
+
+    // A) Cálculo do Score Inverso, IC e IMC
     function calcularScoreSaude(answers) {
       // Mapeamento Tamanho Calça -> circunferência (metros)
       const calcaToCirc = {
@@ -389,25 +470,33 @@
       const peso = parseFloat(answers.peso) || 0;
       const altura = parseFloat(answers.altura) || 1;
       const calca = parseInt(answers.calca, 10);
+
+      // Circunferência em metros
       const circ_m = calcaToCirc[calca] || 0;
 
-      // Faixa de idade: Pontuação de 0 a 3
+      // Calcular IMC
+      const imcValue = peso / (altura * altura);
+
+      // Faixa de idade (0 a 3)
       let ageScore = 0;
       if (idade < 35) ageScore = 0;
       else if (idade < 50) ageScore = 1;
       else if (idade < 65) ageScore = 2;
       else ageScore = 3;
 
-      // Cálculo da circunferência: fórmula = circ_m / (0.109 * sqrt(peso/altura))
-      const calc = circ_m / (0.109 * Math.sqrt(peso / altura));
+      // IC (Índice de Conicidade)
+      // formula = circ_m / (0.109 * sqrt(peso/altura))
+      const icValue = circ_m / (0.109 * Math.sqrt(peso / altura));
+
+      // circScore: 2 se IC >= 1.25 (masc) ou 1.18 (fem)
       let circScore = 0;
-      if (sexo === "masculino" && calc >= 1.25) circScore = 2;
-      if (sexo === "feminino" && calc >= 1.18) circScore = 2;
+      if (sexo === "masculino" && icValue >= 1.25) circScore = 2;
+      if (sexo === "feminino" && icValue >= 1.18) circScore = 2;
 
-      // Subtotal das 5 primeiras perguntas (máximo 5 pontos)
-      const subtotal_5 = circScore + ageScore;
+      // Subtotal 1 a 5
+      const subtotal_5 = circScore + ageScore; // máx 5
 
-      // Pontuação das perguntas 6 a 14 (cada uma até 2 pontos; máximo 18 pontos)
+      // Perguntas 6 a 14
       const questionPoints = {
         dores: { "Sim": 2, "Não": 0 },
         atividadeFisica: { "Nunca": 2, "1 ou 2 vezes por semana": 1, "3 ou mais vezes por semana": 0 },
@@ -431,22 +520,86 @@
       subtotal_9 += questionPoints.frutasVegetais[answers.frutasVegetais] || 0;
       subtotal_9 += questionPoints.fastFood[answers.fastFood] || 0;
 
-      // Total bruto (0 a 23 pontos)
+      // total bruto (0 a 23)
       const totalBruto = subtotal_5 + subtotal_9;
       const maxPossivel = 23;
       const scoreOriginal = Math.round((totalBruto / maxPossivel) * 100);
 
-      // Inversão: scoreInverso = 100 - scoreOriginal, para que notas mais altas indiquem melhor saúde.
+      // Score Inverso
       const scoreInverso = 100 - scoreOriginal;
 
-      // Nova classificação: scoreInverso alto = Bem Estar; baixo = Risco.
+      // Classificação
       let classificacao;
       if (scoreInverso >= 80) classificacao = "Bem Estar";
       else if (scoreInverso >= 65) classificacao = "Cuidados";
       else if (scoreInverso >= 40) classificacao = "Atenção";
       else classificacao = "Risco";
 
-      return { scoreFinal: scoreInverso, classificacao };
+      return {
+        scoreFinal: scoreInverso,
+        classificacao,
+        icValue,
+        imcValue
+      };
+    }
+
+    // B) Indicador do IC
+    function showICIndicator(icValue, sexo) {
+      document.getElementById('ic-value').textContent = icValue.toFixed(2);
+
+      // Determina threshold
+      let threshold = (sexo === 'masculino') ? 1.25 : 1.18;
+
+      // Range de IC para exibir na barra
+      const minIC = 1.0;
+      const maxIC = 1.4;
+      const containerWidth = 400;
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      // Fração do valor do IC
+      const pointerFraction = clamp((icValue - minIC)/(maxIC - minIC), 0, 1);
+      const pointerLeft = pointerFraction * containerWidth;
+      const pointerDiv = document.getElementById('ic-pointer');
+      pointerDiv.style.left = pointerLeft + 'px';
+
+      // Threshold
+      const thresholdFraction = clamp((threshold - minIC)/(maxIC - minIC), 0, 1);
+      const thresholdLeft = thresholdFraction * containerWidth;
+      const thresholdDiv = document.getElementById('ic-threshold');
+      thresholdDiv.style.left = thresholdLeft + 'px';
+    }
+
+    // C) Indicador de IMC
+    function showBMIIndicator(bmiValue) {
+      document.getElementById('bmi-value').textContent = bmiValue.toFixed(1);
+
+      const minBMI = 15;
+      const maxBMI = 40;
+      const containerWidth = 400;
+
+      function clamp(v, mn, mx) {
+        return Math.max(mn, Math.min(mx, v));
+      }
+
+      // Fração do IMC do usuário
+      const fraction = (bmiValue - minBMI) / (maxBMI - minBMI);
+      const pointerFraction = clamp(fraction, 0, 1);
+      const pointerLeft = pointerFraction * containerWidth;
+      document.getElementById('bmi-pointer').style.left = pointerLeft + 'px';
+
+      // Posicionar thresholds (18.5, 25, 30)
+      function setThresholdPosition(elementId, thresholdValue) {
+        const thrFrac = clamp((thresholdValue - minBMI)/(maxBMI - minBMI), 0, 1);
+        const thrLeft = thrFrac * containerWidth;
+        document.getElementById(elementId).style.left = thrLeft + 'px';
+      }
+
+      setThresholdPosition('bmi-threshold-18-5', 18.5);
+      setThresholdPosition('bmi-threshold-25', 25);
+      setThresholdPosition('bmi-threshold-30', 30);
     }
   </script>
 </body>
