@@ -325,6 +325,10 @@
         }
       }
 
+       // Valida a altura
+      const altura = validarAltura();
+      if (altura === null) return; // Interrompe se a validação falhar
+      
       // Coleta dados
       const answers = {
         nome: document.getElementById('nome').value.trim(),
@@ -332,7 +336,7 @@
         whatsapp: document.getElementById('whatsapp').value.trim(),
         sexo: document.getElementById('sexo').value,
         idade: document.getElementById('idade').value,
-        altura: document.getElementById('altura').value,
+        altura: altura, // usa o valor validado
         peso: document.getElementById('peso').value,
         calca: document.getElementById('calca').value,
         dores: document.getElementById('dores').value,
