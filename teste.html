@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Avaliação de Saúde - Multi-step</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <!-- Highcharts (Gauge) -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f7f9fc;
+      text-align: center;
+      margin: 0 auto;
+      max-width: 800px;
+    }
+    h1, h2, h3 {
+      color: #e91e63;
+    }
+    .form-box {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .button {
+      background: #e91e63;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .button:hover {
+      background: #c2185b;
+    }
+    .navigation-buttons {
+      text-align: right;
+    }
+    .navigation-buttons button {
+      margin-left: 10px;
+    }
+    .gauge-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .indicator-container {
+      margin-top: 30px;
+    }
+    .indicator-bar {
+      position: relative;
+      width: 400px;
+      height: 30px;
+      margin: 0 auto;
+      border-radius: 15px;
+      background: linear-gradient(to right, #0f0, #ff0, #f00);
+    }
+    .indicator-pointer {
+      position: absolute;
+      top: -10px;
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-bottom: 10px solid #000;
+    }
+    .indicator-label {
+      position: absolute;
+      top: 0px;
+      transform: translateX(-50%);
+      margin-top: 20px;
+      color: #000;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Avaliação de Saúde</h1>
+  <p class="subtitle">Responda às perguntas em cada seção. Ao final, você receberá um score geral (com gauge) e indicadores para cada área.</p>
+
+  <!-- Página 0: Dados do Usuário -->
+  <div id="step-0" class="form-box">
+    <h2>Dados do Usuário</h2>
+    <label for="nome">Nome *</label>
+    <input type="text" id="nome" placeholder="Seu nome" />
+
+    <label for="email">Email *</label>
+    <input type="email" id="email" placeholder="seu-email@exemplo.com" />
+
+    <label for="whatsapp">WhatsApp (opcional)</label>
+    <input type="text" id="whatsapp" placeholder="(11) 9XXXX-XXXX" />
+
+    <div class="navigation-buttons">
+      <button class="button" onclick="nextStep()">Próximo</button>
+    </div>
+  </div>
+
+  <!-- Página 1: Seção 1 – Risco Cardíaco -->
+  <div id="step-1" class="form-box hidden">
+    <h2>Seção 1 – Risco Cardíaco</h2>
+    <label for="sexo">Sexo</label>
+    <select id="sexo">
+      <option value="">Selecione</option>
+      <option value="masculino">Masculino</option>
+      <option value="feminino">Feminino</option>
+      <option value="outros">Outro</option>
+    </select>
+    <label for="idade">Idade (em anos)</label>
+    <input type="number" id="idade" />
+    <label for="altura">Altura (em metros, ex.: 1.75)</label>
+    <input type="number" id="altura" step="0.01" placeholder="Ex: 1.75" />
+    <label for="peso">Peso (em kg)</label>
+    <input type="number" id="peso" step="0.1" />
+    <label for="calca">Tamanho da Calça (BR – ex.: 44)</label>
+    <input type="number" id="calca" />
+    <div class="navigation-buttons">
+      <button class="button" onclick="prevStep()">Voltar</button>
+      <button class="button" onclick="nextStep()">Próximo</button>
+    </div>
+  </div>
+
+  <!-- Página 2: Seção 2 – Função Física -->
+  <div id="step-2" class="form-box hidden">
+    <h2>Seção 2 – Função Física</h2>
+    <label for="dores">Você sente dores frequentes no corpo?</label>
+    <select id="dores">
+      <option value="">Selecione</option>
+      <option value="Sim">Sim</option>
+      <option value="Não">Não</option>
+    </select>
+    <label for="atividadeFisica">Frequência de atividade física</label>
+    <select id="atividadeFisica">
+      <option value="">Selecione</option>
+      <option value="Nunca">Nunca</option>
+      <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
+      <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
+    </select>
+    <label for="faltaFolego">Você sente falta de fôlego ao subir escadas?</label>
+    <select id="faltaFolego">
+      <option value="">Selecione</option>
+      <option value="Sim">Sim</option>
+      <option value="Não">Não</option>
+    </select>
+    <div class="navigation-buttons">
+      <button class="button" onclick="prevStep()">Voltar</button>
+      <button class="button" onclick="nextStep()">Próximo</button>
+    </div>
+  </div>
+
+  <!-- Página 3: Seção 3 – Saúde Mental e Sono -->
+  <div id="step-3" class="form-box hidden">
+    <h2>Seção 3 – Saúde Mental e Sono</h2>
+    <label for="dorme">Você dorme pelo menos 7 horas por noite?</label>
+    <select id="dorme">
+      <option value="">Selecione</option>
+      <option value="Sim">Sim</option>
+      <option value="Não">Não</option>
+    </select>
+    <!-- PHQ-2 Item 1 -->
+    <label for="phq2">Nos últimos 2 semanas, com que frequência você se sentiu desanimado(a), deprimido(a) ou sem esperança?</label>
+    <select id="phq2">
+      <option value="">Selecione</option>
+      <option value="0">Nenhum dia</option>
+      <option value="1">Alguns dias</option>
+      <option value="2">Mais da metade dos dias</option>
+      <option value="3">Quase todos os dias</option>
+    </select>
+    <!-- GAD-2 Item 1 -->
+    <label for="gad2">Nos últimos 2 semanas, com que frequência você se sentiu nervoso(a), ansioso(a) ou tenso(a)?</label>
+    <select id="gad2">
+      <option value="">Selecione</option>
+      <option value="0">Nenhum dia</option>
+      <option value="1">Alguns dias</option>
+      <option value="2">Mais da metade dos dias</option>
+      <option value="3">Quase todos os dias</option>
+    </select>
+    <div class="navigation-buttons">
+      <button class="button" onclick="prevStep()">Voltar</button>
+      <button class="button" onclick="nextStep()">Próximo</button>
+    </div>
+  </div>
+
+  <!-- Página 4: Seção 4 – Hábitos e Estilo de Vida -->
+  <div id="step-4" class="form-box hidden">
+    <h2>Seção 4 – Hábitos e Estilo de Vida</h2>
+    <label for="alcool">Frequência de consumo de álcool</label>
+    <select id="alcool">
+      <option value="">Selecione</option>
+      <option value="Nunca">Nunca</option>
+      <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
+      <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
+    </select>
+    <label for="tabaco">Você fuma ou usa produtos de tabaco?</label>
+    <select id="tabaco">
+      <option value="">Selecione</option>
+      <option value="Não">Não</option>
+      <option value="Sim">Sim</option>
+    </select>
+    <label for="frutasVegetais">Você come frutas e vegetais pelo menos 5 vezes por semana?</label>
+    <select id="frutasVegetais">
+      <option value="">Selecione</option>
+      <option value="Sim">Sim</option>
+      <option value="Não">Não</option>
+    </select>
+    <label for="fastFood">Você consome fast food ou ultraprocessados mais de 3 vezes por semana?</label>
+    <select id="fastFood">
+      <option value="">Selecione</option>
+      <option value="Não">Não</option>
+      <option value="Sim">Sim</option>
+    </select>
+    <div class="navigation-buttons">
+      <button class="button" onclick="prevStep()">Voltar</button>
+      <button class="button" onclick="submitAnswers()">Enviar Respostas</button>
+    </div>
+  </div>
+
+  <!-- Página 5: Resultados -->
+  <div id="results-container" class="form-box hidden">
+    <h2>Resultado da Avaliação</h2>
+    <!-- Gauge do Score Geral -->
+    <div class="gauge-container">
+      <div id="gauge-chart" style="height: 300px;"></div>
+    </div>
+    <div id="score-value" style="font-size: 24px; margin-top: 20px;"></div>
+    <div class="classification" id="classification"></div>
+
+    <!-- Indicadores Horizontais -->
+    <div class="indicator-container" id="indicadores">
+      <h3>Indicadores</h3>
+      <!-- Indicador Seção 1: Risco Cardíaco -->
+      <div>
+        <p>Risco Cardíaco</p>
+        <div class="indicator-bar" id="indicator-cardio"></div>
+      </div>
+      <!-- Indicador Seção 2: Função Física -->
+      <div>
+        <p>Função Física</p>
+        <div class="indicator-bar" id="indicator-fisica"></div>
+      </div>
+      <!-- Indicador Seção 3: Saúde Mental/Stress -->
+      <div>
+        <p>Saúde Mental/Stress</p>
+        <div class="indicator-bar" id="indicator-mental"></div>
+      </div>
+      <!-- Indicador Seção 4: Hábitos -->
+      <div>
+        <p>Hábitos de Vida</p>
+        <div class="indicator-bar" id="indicator-habitos"></div>
+      </div>
+    </div>
+
+    <!-- Indicador de IC (já incluso na Seção 1, mas pode ser mostrado separadamente se desejado) -->
+    <div class="indicator-container" id="ic-indicator">
+      <h3>Índice de Conicidade (IC)</h3>
+      <div>Valor IC: <span id="ic-value"></span></div>
+      <div class="indicator-bar" id="ic-bar-container">
+        <div class="indicator-pointer" id="ic-pointer"></div>
+        <div class="indicator-label" id="ic-label"></div>
+      </div>
+    </div>
+
+    <!-- Indicador de IMC -->
+    <div class="indicator-container" id="bmi-indicator">
+      <h3>Risco Relacionado ao IMC</h3>
+      <div>IMC: <span id="bmi-value"></span></div>
+      <div class="indicator-bar" id="bmi-bar-container">
+        <div class="indicator-pointer" id="bmi-pointer"></div>
+        <div class="indicator-label" id="bmi-label"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------------
+    // Variáveis Globais e Navegação
+    // -----------------------------------
+    let currentStep = 0;
+    const totalSteps = 5; // steps 0 a 4
+    const answers = {};
+
+    function showStep(step) {
+      for (let i = 0; i < totalSteps; i++) {
+        document.getElementById(`step-${i}`).classList.add('hidden');
+      }
+      document.getElementById(`step-${step}`).classList.remove('hidden');
+    }
+
+    function nextStep() {
+      // Salva os dados da etapa atual
+      collectData(currentStep);
+      if (currentStep < totalSteps - 1) {
+        currentStep++;
+        showStep(currentStep);
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        showStep(currentStep);
+      }
+    }
+
+    // Função para coletar dados de cada etapa
+    function collectData(step) {
+      switch(step) {
+        case 0:
+          answers.nome = document.getElementById('nome').value.trim();
+          answers.email = document.getElementById('email').value.trim();
+          answers.whatsapp = document.getElementById('whatsapp').value.trim();
+          break;
+        case 1:
+          answers.sexo = document.getElementById('sexo').value;
+          answers.idade = document.getElementById('idade').value;
+          answers.altura = document.getElementById('altura').value;
+          answers.peso = document.getElementById('peso').value;
+          answers.calca = document.getElementById('calca').value;
+          break;
+        case 2:
+          answers.dores = document.getElementById('dores').value;
+          answers.atividadeFisica = document.getElementById('atividadeFisica').value;
+          answers.faltaFolego = document.getElementById('faltaFolego').value;
+          break;
+        case 3:
+          answers.dorme = document.getElementById('dorme').value;
+          answers.phq2 = document.getElementById('phq2').value; // valor 0 a 3
+          answers.gad2 = document.getElementById('gad2').value; // valor 0 a 3
+          break;
+        case 4:
+          answers.alcool = document.getElementById('alcool').value;
+          answers.tabaco = document.getElementById('tabaco').value;
+          answers.frutasVegetais = document.getElementById('frutasVegetais').value;
+          answers.fastFood = document.getElementById('fastFood').value;
+          break;
+      }
+    }
+
+    // Avança para enviar as respostas na etapa 4
+    async function submitAnswers() {
+      // Coleta os dados da última etapa
+      collectData(4);
+      // Validação simples: Verificar se todos os campos foram preenchidos
+      const requiredFields = ['sexo','idade','altura','peso','calca','dores','atividadeFisica',
+                              'faltaFolego','dorme','phq2','gad2','alcool','tabaco','frutasVegetais','fastFood'];
+      for (let field of requiredFields) {
+        if (!answers[field]) {
+          alert("Preencha todas as perguntas antes de enviar.");
+          return;
+        }
+      }
+      
+      // Calcula os subscores e o score geral
+      const scores = calcularScores(answers);
+      // Salva todos os dados (junto com os scores) no Firebase
+      const payload = {
+        ...answers,
+        ...scores,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      try {
+        await db.collection("avaliacaoSaude").add(payload);
+      } catch (err) {
+        console.error("Erro ao salvar no Firestore:", err);
+      }
+      // Exibe resultados
+      showResults(scores);
+    }
+
+    // -----------------------------------
+    // 4) Cálculo dos Scores e Subscores
+    // -----------------------------------
+
+    function calcularScores(ans) {
+      // Converter valores numéricos
+      const idade = parseInt(ans.idade, 10);
+      const peso = parseFloat(ans.peso);
+      // Substituir vírgulas por pontos na altura, se necessário
+      let alturaInput = ans.altura.replace(',', '.');
+      const altura = parseFloat(alturaInput);
+      const calca = parseInt(ans.calca, 10);
+
+      // Seção 1: Risco Cardíaco
+      // Utiliza medidas físicas para calcular IMC e IC, e pondera pela idade.
+      const calcaToCirc = {
+        36: 0.72, 38: 0.76, 40: 0.80, 42: 0.84,
+        44: 0.88, 46: 0.92, 48: 0.96, 50: 1.00,
+        52: 1.04, 54: 1.08, 56: 1.12, 58: 1.16,
+        60: 1.20
+      };
+      const circ = calcaToCirc[calca] || 0;
+      // IMC
+      const imc = peso / (altura * altura);
+      // IC
+      const ic = circ / (0.109 * Math.sqrt(peso / altura));
+
+      // Converter cada em um score de 0 a 100 (quanto melhor, maior)
+      // Para IMC, se <25 = 100; entre 25 e 30, linear de 100 a 50; >30 = 0
+      let imcScore = 0;
+      if (imc < 25) imcScore = 100;
+      else if (imc >= 25 && imc < 30) imcScore = ((30 - imc) / 5) * 50 + 50; // de 100 a 50
+      else imcScore = 0;
+
+      // Para IC: depende do sexo
+      let icScore = 0;
+      if (ans.sexo.toLowerCase() === "masculino") {
+        if (ic < 1.20) icScore = 100;
+        else if (ic >= 1.20 && ic < 1.25) icScore = ((1.25 - ic) / 0.05) * 50 + 50;
+        else icScore = 0;
+      } else if (ans.sexo.toLowerCase() === "feminino") {
+        if (ic < 1.13) icScore = 100;
+        else if (ic >= 1.13 && ic < 1.18) icScore = ((1.18 - ic) / 0.05) * 50 + 50;
+        else icScore = 0;
+      } else {
+        // Para "outros", use uma média dos dois
+        icScore = (100 + 0) / 2; // ou outra lógica
+      }
+      // Idade: Aumenta o risco com o tempo – menos pontos para idades mais avançadas.
+      let idadeScore = 0;
+      if (idade < 45) idadeScore = 100;
+      else if (idade >= 45 && idade < 55) idadeScore = 75;
+      else if (idade >= 55 && idade < 65) idadeScore = 50;
+      else idadeScore = 25;
+
+      // Subscore Seção 1 (Risco Cardíaco): podemos ponderar 40% IC, 30% IMC, 30% idade
+      const scoreSec1 = 0.4 * icScore + 0.3 * imcScore + 0.3 * idadeScore;
+
+      // Seção 2: Função Física
+      // Dores: Sim = 0, Não = 100
+      const doresScore = (ans.dores === "Não") ? 100 : 0;
+      // Atividade Física: Nunca = 0, "1 ou 2 vezes por semana" = 50, "3 ou mais vezes" = 100
+      let atividadeScore = 0;
+      if (ans.atividadeFisica === "Nunca") atividadeScore = 0;
+      else if (ans.atividadeFisica === "1 ou 2 vezes por semana") atividadeScore = 50;
+      else if (ans.atividadeFisica === "3 ou mais vezes por semana") atividadeScore = 100;
+      // Falta de fôlego: Sim = 0, Não = 100
+      const folegoScore = (ans.faltaFolego === "Não") ? 100 : 0;
+      // Subscore Seção 2: média simples
+      const scoreSec2 = (doresScore + atividadeScore + folegoScore) / 3;
+
+      // Seção 3: Saúde Mental/Stress
+      // Sono: Se dorme 7h = 100, caso contrário = 0 (ou 50 se quiser intermediário)
+      const sonoScore = (ans.dorme === "Sim") ? 100 : 0;
+      // PHQ-2 item 1: escala 0 a 3; score = (3 - valor)/3 * 100
+      const phq2Score = ((3 - parseInt(ans.phq2, 10)) / 3) * 100;
+      // GAD-2 item 1: mesma escala
+      const gad2Score = ((3 - parseInt(ans.gad2, 10)) / 3) * 100;
+      // Subscore Seção 3: média dos três
+      const scoreSec3 = (sonoScore + phq2Score + gad2Score) / 3;
+
+      // Seção 4: Hábitos de Vida
+      // Álcool: Nunca = 100, 1 ou 2 vezes = 50, 3 ou mais = 0
+      let alcoolScore = 0;
+      if (ans.alcool === "Nunca") alcoolScore = 100;
+      else if (ans.alcool === "1 ou 2 vezes por semana") alcoolScore = 50;
+      else alcoolScore = 0;
+      // Tabaco: Não = 100, Sim = 0
+      const tabacoScore = (ans.tabaco === "Não") ? 100 : 0;
+      // Frutas/Vegetais: Sim = 100, Não = 0
+      const frutasScore = (ans.frutasVegetais === "Sim") ? 100 : 0;
+      // Fast Food: Não = 100, Sim = 0
+      const fastFoodScore = (ans.fastFood === "Não") ? 100 : 0;
+      const scoreSec4 = (alcoolScore + tabacoScore + frutasScore + fastFoodScore) / 4;
+
+      // Score Geral: pesos: Seção 1: 35%, Seção 2: 25%, Seção 3: 25%, Seção 4: 15%
+      const scoreGeral = Math.round(0.35 * scoreSec1 + 0.25 * scoreSec2 + 0.25 * scoreSec3 + 0.15 * scoreSec4);
+
+      return {
+        scoreGeral, // Score Geral de Saúde (0-100, quanto maior, melhor)
+        scoreSec1,  // Risco Cardíaco (0-100; maiores valores indicam menor risco)
+        scoreSec2,  // Função Física (0-100)
+        scoreSec3,  // Saúde Mental/Stress (0-100)
+        scoreSec4,  // Hábitos de Vida (0-100)
+        icValue,    // Índice de Conicidade (valor calculado)
+        imcValue    // IMC (valor calculado)
+      };
+    }
+
+    // -----------------------------------
+    // 5) Exibição dos Resultados
+    // -----------------------------------
+    function showResults(scores) {
+      // Oculta as etapas e exibe a página de resultados
+      for (let i = 0; i < totalSteps; i++) {
+        document.getElementById(`step-${i}`).classList.add('hidden');
+      }
+      document.getElementById('results-container').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Exibe o Gauge do Score Geral
+      document.getElementById('score-value').innerText = `Score Geral: ${scores.scoreGeral}/100`;
+      // Classificação geral
+      let geralLabel = "";
+      if (scores.scoreGeral >= 80) geralLabel = "Baixo Risco";
+      else if (scores.scoreGeral >= 65) geralLabel = "Risco Moderado";
+      else geralLabel = "Alto Risco";
+      document.getElementById('classification').innerText = geralLabel;
+
+      Highcharts.chart('gauge-chart', {
+        chart: {
+          type: 'solidgauge'
+        },
+        title: {
+          text: `Score Geral: ${scores.scoreGeral}`
+        },
+        pane: {
+          center: ['50%', '85%'],
+          size: '140%',
+          startAngle: -90,
+          endAngle: 90,
+          background: {
+            backgroundColor: '#EEE',
+            innerRadius: '60%',
+            outerRadius: '100%',
+            shape: 'arc'
+          }
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          lineWidth: 0,
+          tickPositions: [],
+          stops: [
+            [0.40, '#ff0000'], // 0-40: Alto risco
+            [0.65, '#ffcc00'], // 40-65: Moderado
+            [0.80, '#a0d911'], // 65-80: Baixo
+            [1.00, '#008000']  // 80-100: Excelente
+          ]
+        },
+        plotOptions: {
+          solidgauge: {
+            dataLabels: {
+              enabled: true,
+              format: '<div style="text-align:center"><span style="font-size:24px">{y}</span><br/><span style="font-size:12px;opacity:0.4">pontos</span></div>',
+              y: -30,
+              borderWidth: 0,
+              useHTML: true
+            }
+          }
+        },
+        series: [{
+          name: 'Score Geral',
+          data: [scores.scoreGeral],
+          tooltip: {
+            valueSuffix: ' pontos'
+          }
+        }]
+      });
+
+      // Exibe os indicadores horizontais para cada seção
+      updateIndicator('indicator-cardio', scores.scoreSec1);
+      updateIndicator('indicator-fisica', scores.scoreSec2);
+      updateIndicator('indicator-mental', scores.scoreSec3);
+      updateIndicator('indicator-habitos', scores.scoreSec4);
+
+      // Exibe Indicador de IC
+      showICIndicator(scores.icValue, answers.sexo);
+      // Exibe Indicador de IMC
+      showBMIIndicator(scores.imcValue);
+    }
+
+    // Função para atualizar um indicador horizontal (barra com ponteiro e label)
+    // Usaremos os mesmos thresholds para todas as seções:
+    // >=80: Baixo Risco, 65-80: Risco Moderado, <65: Alto Risco.
+    function updateIndicator(containerId, value) {
+      // O containerId é o id da barra, largura fixa de 400px.
+      const containerWidth = 400;
+      // Supondo que o valor já esteja normalizado em 0-100
+      const pointerLeft = (value / 100) * containerWidth;
+      // Cria ou atualiza a seta (ponteiro)
+      let container = document.getElementById(containerId);
+      // Se já houver uma seta, a atualiza; senão, cria
+      let pointer = container.querySelector('.indicator-pointer');
+      let label = container.querySelector('.indicator-label');
+      if (!pointer) {
+        pointer = document.createElement('div');
+        pointer.className = 'indicator-pointer';
+        container.appendChild(pointer);
+      }
+      if (!label) {
+        label = document.createElement('div');
+        label.className = 'indicator-label';
+        container.appendChild(label);
+      }
+      pointer.style.left = pointerLeft + 'px';
+      label.style.left = pointerLeft + 'px';
+
+      // Define o rótulo de risco
+      let riskLabel = "";
+      if (value >= 80) riskLabel = "Baixo Risco";
+      else if (value >= 65) riskLabel = "Risco Moderado";
+      else riskLabel = "Alto Risco";
+      label.textContent = riskLabel;
+    }
+
+    // -----------------------------------
+    // 6) Funções de Indicador de IC e IMC (com seta única e label)
+    // (Já definidas anteriormente: showICIndicator e showBMIIndicator)
+    function showICIndicator(icValue, sexo) {
+      document.getElementById('ic-value').textContent = icValue.toFixed(2);
+      const minIC = 1.0, maxIC = 1.4, containerWidth = 400;
+      function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+      const fraction = clamp((icValue - minIC) / (maxIC - minIC), 0, 1);
+      const pointerLeft = fraction * containerWidth;
+      const pointerDiv = document.getElementById('ic-pointer');
+      pointerDiv.style.left = pointerLeft + 'px';
+      let riskLabel = "Baixo Risco";
+      if (sexo.toLowerCase() === "masculino") {
+        if (icValue >= 1.25) riskLabel = "Alto Risco";
+        else if (icValue >= 1.20) riskLabel = "Risco Moderado";
+      } else {
+        if (icValue >= 1.18) riskLabel = "Alto Risco";
+        else if (icValue >= 1.13) riskLabel = "Risco Moderado";
+      }
+      const labelDiv = document.getElementById('ic-label');
+      labelDiv.style.left = pointerLeft + 'px';
+      labelDiv.textContent = riskLabel;
+    }
+
+    function showBMIIndicator(bmiValue) {
+      document.getElementById('bmi-value').textContent = bmiValue.toFixed(1);
+      const minBMI = 15, maxBMI = 40, containerWidth = 400;
+      function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+      const fraction = clamp((bmiValue - minBMI) / (maxBMI - minBMI), 0, 1);
+      const pointerLeft = fraction * containerWidth;
+      const pointerDiv = document.getElementById('bmi-pointer');
+      pointerDiv.style.left = pointerLeft + 'px';
+      let riskLabel = "Baixo Risco";
+      if (bmiValue > 30) riskLabel = "Alto Risco";
+      else if (bmiValue >= 25) riskLabel = "Risco Moderado";
+      const labelDiv = document.getElementById('bmi-label');
+      labelDiv.style.left = pointerLeft + 'px';
+      labelDiv.textContent = riskLabel;
+    }
+
+    // -----------------------------------
+    // 7) Firebase: Envio dos Dados e Início da Avaliação
+    // -----------------------------------
+    // Configure seu firebaseConfig com suas credenciais reais.
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
+      authDomain: "htracker-101.firebaseapp.com",
+      projectId: "htracker-101",
+      storageBucket: "htracker-101.firebasestorage.app",
+      messagingSenderId: "77241327034",
+      appId: "1:77241327034:web:325d4f27f194b8a5cdd183"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Inicia a avaliação (já foi definido na etapa 0)
+    // Exibe a etapa 0
+    showStep(0);
+  </script>
+</body>
+</html>
