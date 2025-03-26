@@ -106,7 +106,7 @@
 </head>
 <body>
   <h1>Avaliação de Saúde</h1>
-  <p class="subtitle">Responda às perguntas em cada seção. Ao final, você receberá um score geral (com gauge) e indicadores para cada área.</p>
+  <p class="subtitle">Responda às perguntas em cada seção. Ao final, você receberá um score geral e indicadores para cada área.</p>
 
   <!-- Página 0: Dados do Usuário -->
   <div id="step-0" class="form-box">
@@ -272,14 +272,14 @@
         <p>Saúde Mental/Stress</p>
         <div class="indicator-bar" id="indicator-mental"></div>
       </div>
-      <!-- Indicador Seção 4: Hábitos -->
+      <!-- Indicador Seção 4: Hábitos de Vida -->
       <div>
         <p>Hábitos de Vida</p>
         <div class="indicator-bar" id="indicator-habitos"></div>
       </div>
     </div>
 
-    <!-- Indicador de IC (já incluso na Seção 1, mas pode ser mostrado separadamente se desejado) -->
+    <!-- Indicador de IC -->
     <div class="indicator-container" id="ic-indicator">
       <h3>Índice de Conicidade (IC)</h3>
       <div>Valor IC: <span id="ic-value"></span></div>
@@ -301,13 +301,12 @@
   </div>
 
   <script>
-    // -----------------------------------
-    // Variáveis Globais e Navegação
-    // -----------------------------------
+    // Variáveis globais para navegação
     let currentStep = 0;
-    const totalSteps = 5; // steps 0 a 4
+    const totalSteps = 5; // Etapas de 0 a 4
     const answers = {};
 
+    // Exibe o step atual
     function showStep(step) {
       for (let i = 0; i < totalSteps; i++) {
         document.getElementById(`step-${i}`).classList.add('hidden');
@@ -316,7 +315,6 @@
     }
 
     function nextStep() {
-      // Salva os dados da etapa atual
       collectData(currentStep);
       if (currentStep < totalSteps - 1) {
         currentStep++;
@@ -331,7 +329,7 @@
       }
     }
 
-    // Função para coletar dados de cada etapa
+    // Coleta os dados de cada etapa
     function collectData(step) {
       switch(step) {
         case 0:
@@ -342,7 +340,10 @@
         case 1:
           answers.sexo = document.getElementById('sexo').value;
           answers.idade = document.getElementById('idade').value;
-          answers.altura = document.getElementById('altura').value;
+          // Validação e formatação da altura:
+          let alturaInput = document.getElementById('altura').value.trim();
+          alturaInput = alturaInput.replace(',', '.');
+          answers.altura = alturaInput;
           answers.peso = document.getElementById('peso').value;
           answers.calca = document.getElementById('calca').value;
           break;
@@ -365,11 +366,27 @@
       }
     }
 
-    // Avança para enviar as respostas na etapa 4
+    // Função para validar a altura: se não estiver no formato correto ou fora de 0.5-2.5, alerta e retorna null
+    function validarAltura(alturaStr) {
+      // Já foi substituída a vírgula por ponto no collectData
+      const regex = /^\d+(\.\d{1,2})?$/;
+      if (!regex.test(alturaStr)) {
+        alert("Formato de altura inválido. Use o padrão 1.75 (com ponto como separador).");
+        return null;
+      }
+      const altura = parseFloat(alturaStr);
+      if (altura < 0.5 || altura > 2.5) {
+        alert("Altura deve estar entre 0,5m e 2,5m.");
+        return null;
+      }
+      return altura;
+    }
+
     async function submitAnswers() {
-      // Coleta os dados da última etapa
+      // Coleta dados da última etapa
       collectData(4);
-      // Validação simples: Verificar se todos os campos foram preenchidos
+
+      // Verifica se todos os campos estão preenchidos
       const requiredFields = ['sexo','idade','altura','peso','calca','dores','atividadeFisica',
                               'faltaFolego','dorme','phq2','gad2','alcool','tabaco','frutasVegetais','fastFood'];
       for (let field of requiredFields) {
@@ -379,9 +396,14 @@
         }
       }
       
-      // Calcula os subscores e o score geral
-      const scores = calcularScores(answers);
-      // Salva todos os dados (junto com os scores) no Firebase
+      // Valida a altura
+      const alturaValida = validarAltura(answers.altura);
+      if (alturaValida === null) return;
+      answers.altura = alturaValida;
+
+      // Calcula os scores
+      const scores = calcularScoreSaude(answers);
+      // Salva os dados no Firebase
       const payload = {
         ...answers,
         ...scores,
@@ -392,102 +414,82 @@
       } catch (err) {
         console.error("Erro ao salvar no Firestore:", err);
       }
-      // Exibe resultados
       showResults(scores);
     }
 
-    // -----------------------------------
-    // 4) Cálculo dos Scores e Subscores
-    // -----------------------------------
-
-    function calcularScores(ans) {
-      // Converter valores numéricos
-      const idade = parseInt(ans.idade, 10);
-      const peso = parseFloat(ans.peso);
-      // Substituir vírgulas por pontos na altura, se necessário
-      let alturaInput = ans.altura.replace(',', '.');
-      const altura = parseFloat(alturaInput);
-      const calca = parseInt(ans.calca, 10);
-
-      // Seção 1: Risco Cardíaco
-      // Utiliza medidas físicas para calcular IMC e IC, e pondera pela idade.
+    // Função de cálculo dos scores e subscores
+    function calcularScoreSaude(ans) {
+      // Seção 1: Risco Cardíaco (IMC, IC e idade)
       const calcaToCirc = {
         36: 0.72, 38: 0.76, 40: 0.80, 42: 0.84,
         44: 0.88, 46: 0.92, 48: 0.96, 50: 1.00,
         52: 1.04, 54: 1.08, 56: 1.12, 58: 1.16,
         60: 1.20
       };
+      const sexo = (ans.sexo || "").toLowerCase();
+      const idade = parseInt(ans.idade, 10);
+      const peso = parseFloat(ans.peso);
+      const altura = parseFloat(ans.altura);
+      const calca = parseInt(ans.calca, 10);
       const circ = calcaToCirc[calca] || 0;
+
       // IMC
-      const imc = peso / (altura * altura);
+      const imcValue = peso / (altura * altura);
       // IC
-      const ic = circ / (0.109 * Math.sqrt(peso / altura));
+      const icValue = circ / (0.109 * Math.sqrt(peso / altura));
 
-      // Converter cada em um score de 0 a 100 (quanto melhor, maior)
-      // Para IMC, se <25 = 100; entre 25 e 30, linear de 100 a 50; >30 = 0
-      let imcScore = 0;
-      if (imc < 25) imcScore = 100;
-      else if (imc >= 25 && imc < 30) imcScore = ((30 - imc) / 5) * 50 + 50; // de 100 a 50
-      else imcScore = 0;
-
-      // Para IC: depende do sexo
-      let icScore = 0;
-      if (ans.sexo.toLowerCase() === "masculino") {
-        if (ic < 1.20) icScore = 100;
-        else if (ic >= 1.20 && ic < 1.25) icScore = ((1.25 - ic) / 0.05) * 50 + 50;
-        else icScore = 0;
-      } else if (ans.sexo.toLowerCase() === "feminino") {
-        if (ic < 1.13) icScore = 100;
-        else if (ic >= 1.13 && ic < 1.18) icScore = ((1.18 - ic) / 0.05) * 50 + 50;
-        else icScore = 0;
-      } else {
-        // Para "outros", use uma média dos dois
-        icScore = (100 + 0) / 2; // ou outra lógica
-      }
-      // Idade: Aumenta o risco com o tempo – menos pontos para idades mais avançadas.
+      // Idade: Aumenta o risco com a idade
       let idadeScore = 0;
       if (idade < 45) idadeScore = 100;
       else if (idade >= 45 && idade < 55) idadeScore = 75;
       else if (idade >= 55 && idade < 65) idadeScore = 50;
       else idadeScore = 25;
 
-      // Subscore Seção 1 (Risco Cardíaco): podemos ponderar 40% IC, 30% IMC, 30% idade
-      const scoreSec1 = 0.4 * icScore + 0.3 * imcScore + 0.3 * idadeScore;
+      // Para IMC: Converter para score: se <25 = 100, entre 25 e 30 linear de 100 a 50, >30 = 0.
+      let imcScore = 0;
+      if (imcValue < 25) imcScore = 100;
+      else if (imcValue >= 25 && imcValue < 30) imcScore = ((30 - imcValue) / 5) * 50 + 50;
+      else imcScore = 0;
+
+      // Para IC: depende do sexo
+      let icScore = 0;
+      if (sexo === "masculino") {
+        if (icValue < 1.20) icScore = 100;
+        else if (icValue >= 1.20 && icValue < 1.25) icScore = ((1.25 - icValue) / 0.05) * 50 + 50;
+        else icScore = 0;
+      } else if (sexo === "feminino") {
+        if (icValue < 1.13) icScore = 100;
+        else if (icValue >= 1.13 && icValue < 1.18) icScore = ((1.18 - icValue) / 0.05) * 50 + 50;
+        else icScore = 0;
+      } else {
+        // Para "outros", média dos dois
+        icScore = 50;
+      }
+      // Subscore Seção 1 ponderada: 35% IC, 30% IMC, 35% idade
+      const scoreSec1 = 0.35 * icScore + 0.30 * imcScore + 0.35 * idadeScore;
 
       // Seção 2: Função Física
-      // Dores: Sim = 0, Não = 100
       const doresScore = (ans.dores === "Não") ? 100 : 0;
-      // Atividade Física: Nunca = 0, "1 ou 2 vezes por semana" = 50, "3 ou mais vezes" = 100
       let atividadeScore = 0;
       if (ans.atividadeFisica === "Nunca") atividadeScore = 0;
       else if (ans.atividadeFisica === "1 ou 2 vezes por semana") atividadeScore = 50;
       else if (ans.atividadeFisica === "3 ou mais vezes por semana") atividadeScore = 100;
-      // Falta de fôlego: Sim = 0, Não = 100
       const folegoScore = (ans.faltaFolego === "Não") ? 100 : 0;
-      // Subscore Seção 2: média simples
       const scoreSec2 = (doresScore + atividadeScore + folegoScore) / 3;
 
       // Seção 3: Saúde Mental/Stress
-      // Sono: Se dorme 7h = 100, caso contrário = 0 (ou 50 se quiser intermediário)
       const sonoScore = (ans.dorme === "Sim") ? 100 : 0;
-      // PHQ-2 item 1: escala 0 a 3; score = (3 - valor)/3 * 100
       const phq2Score = ((3 - parseInt(ans.phq2, 10)) / 3) * 100;
-      // GAD-2 item 1: mesma escala
       const gad2Score = ((3 - parseInt(ans.gad2, 10)) / 3) * 100;
-      // Subscore Seção 3: média dos três
       const scoreSec3 = (sonoScore + phq2Score + gad2Score) / 3;
 
       // Seção 4: Hábitos de Vida
-      // Álcool: Nunca = 100, 1 ou 2 vezes = 50, 3 ou mais = 0
       let alcoolScore = 0;
       if (ans.alcool === "Nunca") alcoolScore = 100;
       else if (ans.alcool === "1 ou 2 vezes por semana") alcoolScore = 50;
       else alcoolScore = 0;
-      // Tabaco: Não = 100, Sim = 0
       const tabacoScore = (ans.tabaco === "Não") ? 100 : 0;
-      // Frutas/Vegetais: Sim = 100, Não = 0
       const frutasScore = (ans.frutasVegetais === "Sim") ? 100 : 0;
-      // Fast Food: Não = 100, Sim = 0
       const fastFoodScore = (ans.fastFood === "Não") ? 100 : 0;
       const scoreSec4 = (alcoolScore + tabacoScore + frutasScore + fastFoodScore) / 4;
 
@@ -495,110 +497,21 @@
       const scoreGeral = Math.round(0.35 * scoreSec1 + 0.25 * scoreSec2 + 0.25 * scoreSec3 + 0.15 * scoreSec4);
 
       return {
-        scoreGeral, // Score Geral de Saúde (0-100, quanto maior, melhor)
-        scoreSec1,  // Risco Cardíaco (0-100; maiores valores indicam menor risco)
-        scoreSec2,  // Função Física (0-100)
-        scoreSec3,  // Saúde Mental/Stress (0-100)
-        scoreSec4,  // Hábitos de Vida (0-100)
-        icValue,    // Índice de Conicidade (valor calculado)
-        imcValue    // IMC (valor calculado)
+        scoreGeral, // Geral de 0-100 (quanto maior, melhor)
+        scoreSec1,
+        scoreSec2,
+        scoreSec3,
+        scoreSec4,
+        icValue,
+        imcValue
       };
     }
 
-    // -----------------------------------
-    // 5) Exibição dos Resultados
-    // -----------------------------------
-    function showResults(scores) {
-      // Oculta as etapas e exibe a página de resultados
-      for (let i = 0; i < totalSteps; i++) {
-        document.getElementById(`step-${i}`).classList.add('hidden');
-      }
-      document.getElementById('results-container').classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      // Exibe o Gauge do Score Geral
-      document.getElementById('score-value').innerText = `Score Geral: ${scores.scoreGeral}/100`;
-      // Classificação geral
-      let geralLabel = "";
-      if (scores.scoreGeral >= 80) geralLabel = "Baixo Risco";
-      else if (scores.scoreGeral >= 65) geralLabel = "Risco Moderado";
-      else geralLabel = "Alto Risco";
-      document.getElementById('classification').innerText = geralLabel;
-
-      Highcharts.chart('gauge-chart', {
-        chart: {
-          type: 'solidgauge'
-        },
-        title: {
-          text: `Score Geral: ${scores.scoreGeral}`
-        },
-        pane: {
-          center: ['50%', '85%'],
-          size: '140%',
-          startAngle: -90,
-          endAngle: 90,
-          background: {
-            backgroundColor: '#EEE',
-            innerRadius: '60%',
-            outerRadius: '100%',
-            shape: 'arc'
-          }
-        },
-        yAxis: {
-          min: 0,
-          max: 100,
-          lineWidth: 0,
-          tickPositions: [],
-          stops: [
-            [0.40, '#ff0000'], // 0-40: Alto risco
-            [0.65, '#ffcc00'], // 40-65: Moderado
-            [0.80, '#a0d911'], // 65-80: Baixo
-            [1.00, '#008000']  // 80-100: Excelente
-          ]
-        },
-        plotOptions: {
-          solidgauge: {
-            dataLabels: {
-              enabled: true,
-              format: '<div style="text-align:center"><span style="font-size:24px">{y}</span><br/><span style="font-size:12px;opacity:0.4">pontos</span></div>',
-              y: -30,
-              borderWidth: 0,
-              useHTML: true
-            }
-          }
-        },
-        series: [{
-          name: 'Score Geral',
-          data: [scores.scoreGeral],
-          tooltip: {
-            valueSuffix: ' pontos'
-          }
-        }]
-      });
-
-      // Exibe os indicadores horizontais para cada seção
-      updateIndicator('indicator-cardio', scores.scoreSec1);
-      updateIndicator('indicator-fisica', scores.scoreSec2);
-      updateIndicator('indicator-mental', scores.scoreSec3);
-      updateIndicator('indicator-habitos', scores.scoreSec4);
-
-      // Exibe Indicador de IC
-      showICIndicator(scores.icValue, answers.sexo);
-      // Exibe Indicador de IMC
-      showBMIIndicator(scores.imcValue);
-    }
-
-    // Função para atualizar um indicador horizontal (barra com ponteiro e label)
-    // Usaremos os mesmos thresholds para todas as seções:
-    // >=80: Baixo Risco, 65-80: Risco Moderado, <65: Alto Risco.
+    // Função para atualizar um indicador horizontal (barra com seta e rótulo)
     function updateIndicator(containerId, value) {
-      // O containerId é o id da barra, largura fixa de 400px.
       const containerWidth = 400;
-      // Supondo que o valor já esteja normalizado em 0-100
       const pointerLeft = (value / 100) * containerWidth;
-      // Cria ou atualiza a seta (ponteiro)
       let container = document.getElementById(containerId);
-      // Se já houver uma seta, a atualiza; senão, cria
       let pointer = container.querySelector('.indicator-pointer');
       let label = container.querySelector('.indicator-label');
       if (!pointer) {
@@ -614,7 +527,6 @@
       pointer.style.left = pointerLeft + 'px';
       label.style.left = pointerLeft + 'px';
 
-      // Define o rótulo de risco
       let riskLabel = "";
       if (value >= 80) riskLabel = "Baixo Risco";
       else if (value >= 65) riskLabel = "Risco Moderado";
@@ -622,9 +534,7 @@
       label.textContent = riskLabel;
     }
 
-    // -----------------------------------
-    // 6) Funções de Indicador de IC e IMC (com seta única e label)
-    // (Já definidas anteriormente: showICIndicator e showBMIIndicator)
+    // Indicador do IC
     function showICIndicator(icValue, sexo) {
       document.getElementById('ic-value').textContent = icValue.toFixed(2);
       const minIC = 1.0, maxIC = 1.4, containerWidth = 400;
@@ -646,6 +556,7 @@
       labelDiv.textContent = riskLabel;
     }
 
+    // Indicador do IMC
     function showBMIIndicator(bmiValue) {
       document.getElementById('bmi-value').textContent = bmiValue.toFixed(1);
       const minBMI = 15, maxBMI = 40, containerWidth = 400;
@@ -662,10 +573,82 @@
       labelDiv.textContent = riskLabel;
     }
 
+    // Função para exibir resultados: atualiza Gauge, indicadores e barras
+    function showResults(scores) {
+      for (let i = 0; i < totalSteps; i++) {
+        document.getElementById(`step-${i}`).classList.add('hidden');
+      }
+      document.getElementById('results-container').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Score Geral
+      document.getElementById('score-value').innerText = `Score Geral: ${scores.scoreGeral}/100`;
+      let geralLabel = "";
+      if (scores.scoreGeral >= 80) geralLabel = "Baixo Risco";
+      else if (scores.scoreGeral >= 65) geralLabel = "Risco Moderado";
+      else geralLabel = "Alto Risco";
+      document.getElementById('classification').innerText = geralLabel;
+
+      Highcharts.chart('gauge-chart', {
+        chart: { type: 'solidgauge' },
+        title: { text: `Score Geral: ${scores.scoreGeral}` },
+        pane: {
+          center: ['50%', '85%'],
+          size: '140%',
+          startAngle: -90,
+          endAngle: 90,
+          background: {
+            backgroundColor: '#EEE',
+            innerRadius: '60%',
+            outerRadius: '100%',
+            shape: 'arc'
+          }
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          lineWidth: 0,
+          tickPositions: [],
+          stops: [
+            [0.40, '#ff0000'],
+            [0.65, '#ffcc00'],
+            [0.80, '#a0d911'],
+            [1.00, '#008000']
+          ]
+        },
+        plotOptions: {
+          solidgauge: {
+            dataLabels: {
+              enabled: true,
+              format: '<div style="text-align:center"><span style="font-size:24px">{y}</span><br/><span style="font-size:12px;opacity:0.4">pontos</span></div>',
+              y: -30,
+              borderWidth: 0,
+              useHTML: true
+            }
+          }
+        },
+        series: [{
+          name: 'Score Geral',
+          data: [scores.scoreGeral],
+          tooltip: { valueSuffix: ' pontos' }
+        }]
+      });
+
+      // Atualiza os indicadores horizontais para cada seção
+      updateIndicator('indicator-cardio', scores.scoreSec1);
+      updateIndicator('indicator-fisica', scores.scoreSec2);
+      updateIndicator('indicator-mental', scores.scoreSec3);
+      updateIndicator('indicator-habitos', scores.scoreSec4);
+
+      // Exibe Indicador de IC
+      showICIndicator(scores.icValue, answers.sexo);
+      // Exibe Indicador de IMC
+      showBMIIndicator(scores.imcValue);
+    }
+
     // -----------------------------------
-    // 7) Firebase: Envio dos Dados e Início da Avaliação
+    // Inicialização e Firebase
     // -----------------------------------
-    // Configure seu firebaseConfig com suas credenciais reais.
     const firebaseConfig = {
       apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
       authDomain: "htracker-101.firebaseapp.com",
@@ -677,8 +660,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Inicia a avaliação (já foi definido na etapa 0)
-    // Exibe a etapa 0
+    // Inicia a avaliação mostrando o step 0
     showStep(0);
   </script>
 </body>
