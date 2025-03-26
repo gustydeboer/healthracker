@@ -82,7 +82,7 @@
       height: 30px;
       margin: 0 auto;
       border-radius: 15px;
-      background: linear-gradient(to right, #0f0, #ff0, #f00);
+      background: linear-gradient(to right, #f00, #ff0, #0f0);
     }
     .indicator-pointer {
       position: absolute;
@@ -127,7 +127,7 @@
 
   <!-- Página 1: Seção 1 – Risco Cardíaco -->
   <div id="step-1" class="form-box hidden">
-    <h2>Seção 1 – Risco Cardíaco</h2>
+    <h2>Informações Básicas</h2>
     <label for="sexo">Sexo</label>
     <select id="sexo">
       <option value="">Selecione</option>
@@ -151,7 +151,7 @@
 
   <!-- Página 2: Seção 2 – Função Física -->
   <div id="step-2" class="form-box hidden">
-    <h2>Seção 2 – Função Física</h2>
+    <h2>Como está seu corpo?</h2>
     <label for="dores">Você sente dores frequentes no corpo?</label>
     <select id="dores">
       <option value="">Selecione</option>
@@ -179,7 +179,7 @@
 
   <!-- Página 3: Seção 3 – Saúde Mental e Sono -->
   <div id="step-3" class="form-box hidden">
-    <h2>Seção 3 – Saúde Mental e Sono</h2>
+    <h2>Coomo tem se sentido?</h2>
     <label for="dorme">Você dorme pelo menos 7 horas por noite?</label>
     <select id="dorme">
       <option value="">Selecione</option>
@@ -187,7 +187,7 @@
       <option value="Não">Não</option>
     </select>
     <!-- PHQ-2 Item 1 -->
-    <label for="phq2">Nos últimos 2 semanas, com que frequência você se sentiu desanimado(a), deprimido(a) ou sem esperança?</label>
+    <label for="phq2">Nas últimas 2 semanas, com que frequência você se sentiu desanimado(a), deprimido(a) ou sem esperança?</label>
     <select id="phq2">
       <option value="">Selecione</option>
       <option value="0">Nenhum dia</option>
@@ -196,7 +196,7 @@
       <option value="3">Quase todos os dias</option>
     </select>
     <!-- GAD-2 Item 1 -->
-    <label for="gad2">Nos últimos 2 semanas, com que frequência você se sentiu nervoso(a), ansioso(a) ou tenso(a)?</label>
+    <label for="gad2">Nas últimas 2 semanas, com que frequência você se sentiu nervoso(a), ansioso(a) ou tenso(a)?</label>
     <select id="gad2">
       <option value="">Selecione</option>
       <option value="0">Nenhum dia</option>
@@ -212,7 +212,7 @@
 
   <!-- Página 4: Seção 4 – Hábitos e Estilo de Vida -->
   <div id="step-4" class="form-box hidden">
-    <h2>Seção 4 – Hábitos e Estilo de Vida</h2>
+    <h2>Como estão seus Hábitos e Estilo de Vida?</h2>
     <label for="alcool">Frequência de consumo de álcool</label>
     <select id="alcool">
       <option value="">Selecione</option>
@@ -278,27 +278,6 @@
         <div class="indicator-bar" id="indicator-habitos"></div>
       </div>
     </div>
-
-    <!-- Indicador de IC -->
-    <div class="indicator-container" id="ic-indicator">
-      <h3>Índice de Conicidade (IC)</h3>
-      <div>Valor IC: <span id="ic-value"></span></div>
-      <div class="indicator-bar" id="ic-bar-container">
-        <div class="indicator-pointer" id="ic-pointer"></div>
-        <div class="indicator-label" id="ic-label"></div>
-      </div>
-    </div>
-
-    <!-- Indicador de IMC -->
-    <div class="indicator-container" id="bmi-indicator">
-      <h3>Risco Relacionado ao IMC</h3>
-      <div>IMC: <span id="bmi-value"></span></div>
-      <div class="indicator-bar" id="bmi-bar-container">
-        <div class="indicator-pointer" id="bmi-pointer"></div>
-        <div class="indicator-label" id="bmi-label"></div>
-      </div>
-    </div>
-  </div>
 
   <script>
     // Variáveis globais para navegação
