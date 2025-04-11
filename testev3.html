@@ -361,75 +361,77 @@
     }
 
     async function submitAnswers() {
-      // Validação: verificar se todos os campos foram preenchidos
-      const requiredIds = [
-        'sexo', 'idade', 'altura', 'peso', 'calca', 'sono_horas', 'sono_qualidade',
-        'checkup', 'sintomas', 'acompanhamento', 'ansiedade', 'tristeza',
-        'prazer', 'energia', 'frutas', 'ultraprocessados',
-        'frequencia_atividade', 'duracao_atividade'
-      ];
-      
-      for (let id of requiredIds) {
-        const element = document.getElementById(id);
-        if (!element || !element.value) {
-          alert("Responda todas as perguntas antes de enviar.");
-          return;
-        }
-      }
-
-      // Valida a altura
-      const altura = validarAltura();
-      if (altura === null) return; // Interrompe se a validação falhar
-      
-      // Coleta dados
-      const answers = {
-        nome: document.getElementById('nome')?.value?.trim() || '',
-        email: document.getElementById('email')?.value?.trim() || '',
-        whatsapp: document.getElementById('whatsapp')?.value?.trim() || '',
-        sexo: document.getElementById('sexo').value,
-        idade: document.getElementById('idade').value,
-        altura: altura, // usa o valor validado
-        peso: document.getElementById('peso').value,
-        calca: document.getElementById('calca').value,
-        sono_horas: document.getElementById('sono_horas').value,
-        sono_qualidade: document.getElementById('sono_qualidade').value,
-        checkup: document.getElementById('checkup').value,
-        sintomas: document.getElementById('sintomas').value,
-        acompanhamento: document.getElementById('acompanhamento').value,
-        ansiedade: document.getElementById('ansiedade').value,
-        tristeza: document.getElementById('tristeza').value,
-        prazer: document.getElementById('prazer').value,
-        energia: document.getElementById('energia').value,
-        frutas: document.getElementById('frutas').value,
-        ultraprocessados: document.getElementById('ultraprocessados').value,
-        frequencia_atividade: document.getElementById('frequencia_atividade').value,
-        duracao_atividade: document.getElementById('duracao_atividade').value
-      };
-
-      // Calcula score, IC, IMC
-      const { scoreFinal, classificacao, icValue, imcValue, miniScores, alertas } = calcularScoreSaudeV2(answers);
-
-      // Salva no Firebase
-      const payload = {
-        ...answers,
-        scoreFinal,
-        classificacao,
-        icValue,
-        imcValue,
-        miniScores,   // <- Adicionado
-        alertas,      // <- Adicionado
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      try {
-        await db.collection("avaliacaoSaude").add(payload);
-      } catch (err) {
-        console.error("Erro ao salvar no Firestore:", err);
-      }
-
-      // Exibe resultado
-      showResults(scoreFinal, classificacao, icValue, imcValue, miniScores, alertas, answers.sexo);
+  // Validação: verificar se todos os campos foram preenchidos
+  const requiredIds = [
+    'sexo', 'idade', 'altura', 'peso', 'calca', 'sono_horas', 'sono_qualidade',
+    'checkup', 'sintomas', 'acompanhamento', 'ansiedade', 'tristeza',
+    'prazer', 'energia', 'frutas', 'ultraprocessados',
+    'frequencia_atividade', 'duracao_atividade'
+  ];
+  
+  for (let id of requiredIds) {
+    const element = document.getElementById(id);
+    if (!element || !element.value) {
+      alert(`Por favor, preencha o campo ${id.replace('_', ' ')}.`);
+      return;
     }
+  }
 
+  // Valida a altura
+  const altura = validarAltura();
+  if (altura === null) return; // Interrompe se a validação falhar
+  
+  // Coleta dados
+  const answers = {
+    nome: document.getElementById('nome')?.value?.trim() || 'Anônimo',
+    email: document.getElementById('email')?.value?.trim() || '',
+    whatsapp: document.getElementById('whatsapp')?.value?.trim() || '',
+    sexo: document.getElementById('sexo').value,
+    idade: document.getElementById('idade').value,
+    altura: altura,
+    peso: document.getElementById('peso').value,
+    calca: document.getElementById('calca').value,
+    sono_horas: document.getElementById('sono_horas').value,
+    sono_qualidade: document.getElementById('sono_qualidade').value,
+    checkup: document.getElementById('checkup').value,
+    sintomas: document.getElementById('sintomas').value,
+    acompanhamento: document.getElementById('acompanhamento').value,
+    ansiedade: document.getElementById('ansiedade').value,
+    tristeza: document.getElementById('tristeza').value,
+    prazer: document.getElementById('prazer').value,
+    energia: document.getElementById('energia').value,
+    frutas: document.getElementById('frutas').value,
+    ultraprocessados: document.getElementById('ultraprocessados').value,
+    frequencia_atividade: document.getElementById('frequencia_atividade').value,
+    duracao_atividade: document.getElementById('duracao_atividade').value
+  };
+
+  // Calcula score, IC, IMC
+  const { scoreFinal, classificacao, icValue, imcValue, miniScores, alertas } = calcularScoreSaudeV2(answers);
+
+  // Salva no Firebase
+  const payload = {
+    ...answers,
+    scoreFinal,
+    classificacao,
+    icValue,
+    imcValue,
+    miniScores,
+    alertas,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  
+  try {
+    await db.collection("avaliacaoSaude").add(payload);
+    console.log("Dados salvos com sucesso!");
+  } catch (err) {
+    console.error("Erro ao salvar no Firestore:", err);
+    alert("Erro ao salvar os dados. Por favor, tente novamente.");
+  }
+
+  // Exibe resultado
+  showResults(scoreFinal, classificacao, icValue, imcValue, miniScores, alertas, answers.sexo);
+}
     function showResults(score, classification, icValue, imcValue, miniScores, alertas, sexo) {
       // Oculta assessment, exibe results
       document.getElementById('assessment').style.display = 'none';
