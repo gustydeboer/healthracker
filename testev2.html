@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Avaliação de Saúde</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <!-- Highcharts (Gauge) -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f7f9fc;
+      text-align: center;
+      margin: 0 auto;
+      max-width: 800px;
+    }
+    h1 {
+      color: #e91e63;
+      margin-bottom: 10px;
+    }
+    p.subtitle {
+      font-size: 16px;
+      margin-top: 0;
+      margin-bottom: 30px;
+      color: #555;
+    }
+    .form-box {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .button {
+      background: #e91e63;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .button:hover {
+      background: #c2185b;
+    }
+    #assessment, #results-container {
+      display: none;
+    }
+    .question-block {
+      margin-bottom: 15px;
+    }
+    .gauge-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .classification {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    /* Indicadores horizontais (IC e IMC) */
+    .indicator-container {
+      margin-top: 30px;
+    }
+    .indicator-bar {
+      position: relative;
+      width: 400px;
+      height: 30px;
+      margin: 0 auto;
+      border-radius: 15px;
+      background: linear-gradient(to right, #0f0, #ff0, #f00); /* verde -> amarelo -> vermelho */
+    }
+    .indicator-pointer {
+      position: absolute;
+      top: -10px;       /* faz a setinha ficar acima da barra */
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-bottom: 10px solid #000; /* seta preta */
+    }
+    .indicator-label {
+      position: absolute;
+      top: 0px;         /* logo abaixo da seta */
+      transform: translateX(-50%);
+      margin-top: 20px; /* empurra texto para baixo da seta */
+      background: none;
+      color: #000;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Avaliação de Saúde</h1>
+  <p class="subtitle">
+    Responda às perguntas e obtenha um score de 0 a 100 (mais alto = melhor saúde).
+    Veja também seu Índice de Conicidade (IC) e seu IMC em barras horizontais.
+  </p>
+
+  <!-- ETAPA 1: Dados do Usuário -->
+  <div id="user-info" class="form-box">
+    <h2>Dados do Usuário</h2>
+    <label for="nome">Nome *</label>
+    <input type="text" id="nome" placeholder="Seu nome" />
+
+    <label for="email">Email *</label>
+    <input type="email" id="email" placeholder="seu-email@exemplo.com" />
+
+    <label for="whatsapp">WhatsApp (opcional)</label>
+    <input type="text" id="whatsapp" placeholder="(11) 9XXXX-XXXX" />
+
+    <button class="button" onclick="startAssessment()">Iniciar Avaliação</button>
+  </div>
+
+  <!-- ETAPA 2: Perguntas de Saúde -->
+  <div id="assessment" class="form-box">
+    <h2>Perguntas de Saúde</h2>
+    <!-- Perguntas em bloco único -->
+    <div class="question-block">
+      <label for="sexo">1. Qual o seu sexo biológico?</label>
+      <select id="sexo">
+        <option value="">Selecione</option>
+        <option value="masculino">Masculino</option>
+        <option value="feminino">Feminino</option>
+        <option value="outros">Outros</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="idade">2. Qual a sua Idade (em anos)?</label>
+      <input type="number" id="idade" />
+    </div>
+    <div class="question-block">
+      <label for="altura">3. Altura (em metros. ex: 1.65)</label>
+      <input type="text" id="altura" />
+    </div>
+    <div class="question-block">
+      <label for="peso">4. Qual o seu Peso (em kg)?</label>
+      <input type="number" id="peso" />
+    </div>
+    <div class="question-block">
+      <label for="calca">5. Tamanho da calça (BR)</label>
+      <input type="text" id="calca" />
+    </div>
+    <div class="question-block">
+      <label for="dores">6. Sente dores frequentes no corpo?</label>
+      <select id="dores">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="atividadeFisica">7. Frequência de atividade física?</label>
+      <select id="atividadeFisica">
+        <option value="">Selecione</option>
+        <option value="Nunca">Nunca</option>
+        <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
+        <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="faltaFolego">8. Falta de fôlego ao subir escadas?</label>
+      <select id="faltaFolego">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="dorme">9. Dorme pelo menos 7h por noite?</label>
+      <select id="dorme">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="ansiedade">10. Se sentiu ansioso ou deprimido frequentemente nos últimos 2 meses?</label>
+      <select id="ansiedade">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="alcool">11. Frequência do consumo de álcool?</label>
+      <select id="alcool">
+        <option value="">Selecione</option>
+        <option value="Nunca">Nunca</option>
+        <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
+        <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="tabaco">12. Fuma ou usa produtos de tabaco?</label>
+      <select id="tabaco">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="frutasVegetais">13. Come frutas e vegetais pelo menos 5x por semana?</label>
+      <select id="frutasVegetais">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="question-block">
+      <label for="fastFood">14. Consome fast food ou ultraprocessados mais de 3x por semana?</label>
+      <select id="fastFood">
+        <option value="">Selecione</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+
+    <button class="button" onclick="submitAnswers()">Enviar Respostas</button>
+  </div>
+
+  <!-- ETAPA 3: Resultado (Gauge + Classificação + IC + IMC) -->
+  <div id="results-container" class="form-box">
+    <h2>Resultado da Avaliação</h2>
+    <!-- Gauge do Score Inverso -->
+    <div class="gauge-container">
+      <div id="gauge-chart" style="height: 300px;"></div>
+    </div>
+    <div id="score-value" style="font-size: 24px; margin-top: 20px;"></div>
+    <div class="classification" id="classification"></div>
+<div id="mini-scores-container" style="margin-top: 30px;">
+  <h3>Mini Scores por Tema</h3>
+  <ul id="mini-scores-list"></ul>
+</div>
+
+<div id="alertas-container" style="margin-top: 30px;">
+  <h3>Alertas de Saúde</h3>
+  <ul id="alertas-list"></ul>
+</div>
+
+    <!-- Indicador de IC -->
+    <div class="indicator-container" id="ic-indicator">
+      <h3>Índice de Conicidade (IC)</h3>
+      <div>Valor IC: <span id="ic-value"></span></div>
+      <div class="indicator-bar" id="ic-bar-container">
+        <!-- Ponteiro (seta) -->
+        <div class="indicator-pointer" id="ic-pointer"></div>
+        <!-- Rótulo abaixo da seta -->
+        <div class="indicator-label" id="ic-label"></div>
+      </div>
+    </div>
+
+    <!-- Indicador de IMC -->
+    <div class="indicator-container" id="bmi-indicator">
+      <h3>Risco Relacionado ao IMC</h3>
+      <div style="font-size:14px; color:#666; margin-bottom:10px;">
+        IMC: <span id="bmi-value"></span>
+      </div>
+      <div class="indicator-bar" id="bmi-bar-container">
+        <div class="indicator-pointer" id="bmi-pointer"></div>
+        <div class="indicator-label" id="bmi-label"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------------
+    // 1) Configuração do Firebase
+    // -----------------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUeMiocpr0jeW01gWnllG_uTzXpOfUjj0",
+      authDomain: "htracker-101.firebaseapp.com",
+      projectId: "htracker-101",
+      storageBucket: "htracker-101.firebasestorage.app",
+      messagingSenderId: "77241327034",
+      appId: "1:77241327034:web:325d4f27f194b8a5cdd183"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // -----------------------------------
+    // 2) Lógica de Exibição de Telas
+    // -----------------------------------
+    function startAssessment() {
+      const nome = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
+
+      if (!nome || !email) {
+        alert("Por favor, preencha ao menos o nome e o email.");
+        return;
+      }
+
+      // Oculta user-info, exibe assessment
+      document.getElementById('user-info').style.display = 'none';
+      document.getElementById('assessment').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function submitAnswers() {
+      // Validação: verificar se todos os campos foram preenchidos
+      const requiredIds = [
+        'sexo','idade','altura','peso','calca','dores','atividadeFisica',
+        'faltaFolego','dorme','ansiedade','alcool','tabaco','frutasVegetais','fastFood'
+      ];
+      for (let id of requiredIds) {
+        const val = document.getElementById(id).value;
+        if (!val) {
+          alert("Responda todas as perguntas antes de enviar.");
+          return;
+        }
+      }
+
+       // Valida a altura
+      const altura = validarAltura();
+      if (altura === null) return; // Interrompe se a validação falhar
+      
+      // Coleta dados
+      const answers = {
+        nome: document.getElementById('nome').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        whatsapp: document.getElementById('whatsapp').value.trim(),
+        sexo: document.getElementById('sexo').value,
+        idade: document.getElementById('idade').value,
+        altura: altura, // usa o valor validado
+        peso: document.getElementById('peso').value,
+        calca: document.getElementById('calca').value,
+        dores: document.getElementById('dores').value,
+        atividadeFisica: document.getElementById('atividadeFisica').value,
+        faltaFolego: document.getElementById('faltaFolego').value,
+        dorme: document.getElementById('dorme').value,
+        ansiedade: document.getElementById('ansiedade').value,
+        alcool: document.getElementById('alcool').value,
+        tabaco: document.getElementById('tabaco').value,
+        frutasVegetais: document.getElementById('frutasVegetais').value,
+        fastFood: document.getElementById('fastFood').value
+      };
+
+      // Calcula score, IC, IMC
+      const { scoreFinal, classificacao, icValue, imcValue, miniScores, alertas } = calcularScoreSaudeV2(answers);
+
+      // Salva no Firebase
+      const payload = {
+  ...answers,
+  scoreFinal,
+  classificacao,
+  icValue,
+  imcValue,
+  miniScores,   // <- Adicionado
+  alertas,      // <- Adicionado
+  timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      try {
+        await db.collection("avaliacaoSaude").add(payload);
+      } catch (err) {
+        console.error("Erro ao salvar no Firestore:", err);
+      }
+
+      // Exibe resultado
+      showResults(scoreFinal, classificacao, icValue, imcValue, answers.sexo);
+    }
+
+    function showResults(score, classification, icValue, imcValue, sexo) {
+      // Oculta assessment, exibe results
+      document.getElementById('assessment').style.display = 'none';
+      document.getElementById('results-container').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Atualiza textos do Score
+      document.getElementById('score-value').innerText = `Score: ${score}/100`;
+      document.getElementById('classification').innerText = classification;
+
+      // Cria o Gauge via Highcharts (Score Inverso)
+      Highcharts.chart('gauge-chart', {
+        chart: {
+          type: 'solidgauge'
+        },
+        title: {
+          text: `Seu Score: ${score}`
+        },
+        pane: {
+          center: ['50%', '85%'],
+          size: '140%',
+          startAngle: -90,
+          endAngle: 90,
+          background: {
+            backgroundColor: '#EEE',
+            innerRadius: '60%',
+            outerRadius: '100%',
+            shape: 'arc'
+          }
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          lineWidth: 0,
+          tickPositions: [],
+          // stops invertidas: 0-40 (vermelho), 40-65 (amarelo), 65-80 (verde claro), 80-100 (verde escuro)
+          stops: [
+            [0.40, '#ff0000'],
+            [0.65, '#ffcc00'],
+            [0.80, '#a0d911'],
+            [1.00, '#008000']
+          ]
+        },
+        plotOptions: {
+          solidgauge: {
+            dataLabels: {
+              enabled: true,
+              format: '<div style="text-align:center"><span style="font-size:24px">{y}</span><br/><span style="font-size:12px;opacity:0.4">pontos</span></div>',
+              y: -30,
+              borderWidth: 0,
+              useHTML: true
+            }
+          }
+        },
+        series: [{
+          name: 'Score',
+          data: [score],
+          tooltip: {
+            valueSuffix: ' pontos'
+          }
+        }]
+      });
+
+      // Exibe Indicador de IC
+      showICIndicator(icValue, sexo);
+
+      // Exibe Indicador de IMC
+      showBMIIndicator(imcValue);
+    
+    // Mostrar mini scores
+const miniList = document.getElementById("mini-scores-list");
+miniList.innerHTML = "";
+for (const [tema, valor] of Object.entries(miniScores)) {
+  const li = document.createElement("li");
+  li.textContent = `${tema.charAt(0).toUpperCase() + tema.slice(1)}: ${valor.toFixed(1)} / 3`;
+  miniList.appendChild(li);
+}
+
+// Mostrar alertas
+const alertList = document.getElementById("alertas-list");
+alertList.innerHTML = "";
+if (alertas.length > 0) {
+  alertas.forEach((msg) => {
+    const li = document.createElement("li");
+    li.textContent = msg;
+    alertList.appendChild(li);
+  });
+} else {
+  const li = document.createElement("li");
+  li.textContent = "Nenhum alerta crítico no momento.";
+  alertList.appendChild(li);
+}
+}
+
+    // -----------------------------------
+    // 3) Funções de Cálculo (Score, IC, IMC) e Indicadores
+    // -----------------------------------
+
+    // NOVA FUNÇÃO: Cálculo com base nos 6 blocos temáticos + alertas antropométricos
+function calcularScoreSaudeV2(answers) {
+  const calcaToCirc = {
+    36: 72, 38: 76, 40: 80, 42: 84, 44: 88, 46: 92,
+    48: 96, 50: 100, 52: 104, 54: 108, 56: 112, 58: 116, 60: 120
+  };
+
+  const sexo = answers.sexo.toLowerCase();
+  const idade = parseInt(answers.idade);
+  const peso = parseFloat(answers.peso);
+  const altura = parseFloat(answers.altura);
+  const cintura = calcaToCirc[parseInt(answers.calca)] || 0;
+
+  const imc = peso / (altura * altura);
+  const ic = cintura / (0.109 * Math.sqrt(peso / altura));
+
+  // MINI SCORES 0 a 3 ------------------------------------------------------
+
+  const scoreSono = answers.dorme === "Sim" ? 3 : 0;
+
+  const scoreSaude =
+    (answers.dores === "Não" ? 1 : 0) +
+    (answers.faltaFolego === "Não" ? 1 : 0);
+
+  const scoreMental = answers.ansiedade === "Não" ? 3 : 0;
+
+  const scoreNutricao =
+    (answers.frutasVegetais === "Sim" ? 1.5 : 0) +
+    (answers.fastFood === "Não" ? 1.5 : 0);
+
+  let scoreAtividade = 0;
+  if (answers.atividadeFisica === "Nunca") scoreAtividade = 0;
+  else if (answers.atividadeFisica === "1 ou 2 vezes por semana") scoreAtividade = 1.5;
+  else if (answers.atividadeFisica === "3 ou mais vezes por semana") scoreAtividade = 3;
+
+  let scoreBemEstar = 0;
+  if (answers.alcool === "Nunca") scoreBemEstar += 1.5;
+  if (answers.tabaco === "Não") scoreBemEstar += 1.5;
+
+  // SCORE FINAL NORMALIZADO (0 a 3)
+  const miniScores = {
+    sono: scoreSono,
+    saude: scoreSaude,
+    mental: scoreMental,
+    nutricao: scoreNutricao,
+    atividade: scoreAtividade,
+    bemEstar: scoreBemEstar
+  };
+
+  const scoreMedio = Object.values(miniScores).reduce((acc, val) => acc + val, 0) / Object.values(miniScores).length;
+
+  // CONVERSÃO PARA ESCALA 0 a 100
+  const scoreFinal = Math.round((scoreMedio / 3) * 100);
+
+  // CLASSIFICAÇÃO
+  let classificacao;
+  if (scoreFinal >= 80) classificacao = "Muito Bem";
+  else if (scoreFinal >= 65) classificacao = "Em Equilíbrio";
+  else if (scoreFinal >= 40) classificacao = "Risco Moderado";
+  else classificacao = "Alto Risco";
+
+  // ALERTAS ------------------------------------
+  const alertas = [];
+  if (imc >= 30) alertas.push("Obesidade identificada (IMC acima de 30)");
+  if (imc >= 25 && imc < 30) alertas.push("Sobrepeso detectado (IMC entre 25 e 30)");
+  if ((sexo === "masculino" && cintura > 102) || (sexo === "feminino" && cintura > 88)) {
+    alertas.push("Cintura acima do recomendado para seu sexo");
+  }
+  if (imc >= 30 && scoreNutricao <= 1) alertas.push("Peso elevado e alimentação inadequada");
+  if (imc >= 30 && scoreAtividade <= 1) alertas.push("Peso elevado e baixa atividade física");
+  if (imc < 25 && scoreSono < 1 && scoreBemEstar < 1) alertas.push("Mesmo com peso adequado, é preciso recuperar sono e bem-estar");
+  if (idade > 60 && scoreSaude < 2) alertas.push("Na sua idade, o cuidado com check-up é essencial");
+
+  return {
+    scoreFinal,
+    classificacao,
+    icValue: ic,
+    imcValue: imc,
+    miniScores,
+    alertas
+  };
+}
+
+    }
+
+    // B) Indicador do IC (apenas 1 ponteiro + rótulo)
+    function showICIndicator(icValue, sexo) {
+      // Mostra valor
+      document.getElementById('ic-value').textContent = icValue.toFixed(2);
+
+      // Barra vai de 1.0 a 1.4
+      const minIC = 1.0;
+      const maxIC = 1.4;
+      const containerWidth = 400;
+
+      // Fração do IC
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+      const fraction = clamp((icValue - minIC) / (maxIC - minIC), 0, 1);
+      const pointerLeft = fraction * containerWidth;
+
+      // Move ponteiro (seta)
+      const pointerDiv = document.getElementById('ic-pointer');
+      pointerDiv.style.left = pointerLeft + 'px';
+
+      // Classificar: Baixo, Médio ou Alto risco
+      // Definindo faixas de exemplo (você pode ajustar)
+      let riskLabel = "Baixo Risco";
+      if (sexo === "masculino") {
+        // homem: <1.20 (baixo), 1.20-1.25 (médio), >=1.25 (alto)
+        if (icValue >= 1.25) riskLabel = "Alto Risco";
+        else if (icValue >= 1.20) riskLabel = "Médio Risco";
+      } else {
+        // mulher: <1.13 (baixo), 1.13-1.18 (médio), >=1.18 (alto)
+        if (icValue >= 1.18) riskLabel = "Alto Risco";
+        else if (icValue >= 1.13) riskLabel = "Médio Risco";
+      }
+
+      // Posiciona label abaixo da seta
+      const labelDiv = document.getElementById('ic-label');
+      labelDiv.style.left = pointerLeft + 'px';
+      labelDiv.textContent = riskLabel;
+    }
+
+    // C) Indicador de IMC (apenas 1 ponteiro + rótulo)
+    function showBMIIndicator(bmiValue) {
+      document.getElementById('bmi-value').textContent = bmiValue.toFixed(1);
+
+      // Barra de 15 a 40
+      const minBMI = 15;
+      const maxBMI = 40;
+      const containerWidth = 400;
+
+      function clamp(v, mn, mx) {
+        return Math.max(mn, Math.min(mx, v));
+      }
+      const fraction = clamp((bmiValue - minBMI)/(maxBMI - minBMI), 0, 1);
+      const pointerLeft = fraction * containerWidth;
+
+      // Move ponteiro (seta)
+      const pointerDiv = document.getElementById('bmi-pointer');
+      pointerDiv.style.left = pointerLeft + 'px';
+
+      // Classificar IMC: <25 (baixo), 25-30 (médio), >30 (alto)
+      let riskLabel = "Baixo Risco";
+      if (bmiValue > 30) riskLabel = "Alto Risco";
+      else if (bmiValue >= 25) riskLabel = "Médio Risco";
+
+      // Posiciona label abaixo da seta
+      const labelDiv = document.getElementById('bmi-label');
+      labelDiv.style.left = pointerLeft + 'px';
+      labelDiv.textContent = riskLabel;
+    }
+  </script>
+</body>
+</html>
