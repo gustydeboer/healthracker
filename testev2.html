@@ -115,130 +115,136 @@
   </style>
 </head>
 <body>
-  <h1>Avaliação de Saúde</h1>
-  <p class="subtitle">
-    Responda às perguntas e obtenha um score de 0 a 100 (mais alto = melhor saúde).
-    Veja também seu Índice de Conicidade (IC) e seu IMC em barras horizontais.
-  </p>
+ <div id="assessment" class="form-box">
+  <h2>Perguntas de Saúde</h2>
 
-  <!-- ETAPA 1: Dados do Usuário -->
-  <div id="user-info" class="form-box">
-    <h2>Dados do Usuário</h2>
-    <label for="nome">Nome *</label>
-    <input type="text" id="nome" placeholder="Seu nome" />
+  <!-- Dados Demográficos -->
+  <label for="sexo">Sexo</label>
+  <select id="sexo" required>
+    <option value="">Selecione</option>
+    <option value="masculino">Masculino</option>
+    <option value="feminino">Feminino</option>
+  </select>
 
-    <label for="email">Email *</label>
-    <input type="email" id="email" placeholder="seu-email@exemplo.com" />
+  <label for="idade">Idade</label>
+  <input type="number" id="idade" min="0" required />
 
-    <label for="whatsapp">WhatsApp (opcional)</label>
-    <input type="text" id="whatsapp" placeholder="(11) 9XXXX-XXXX" />
+  <label for="peso">Peso (kg)</label>
+  <input type="number" id="peso" step="0.1" required />
 
-    <button class="button" onclick="startAssessment()">Iniciar Avaliação</button>
-  </div>
+  <label for="altura">Altura (m)</label>
+  <input type="number" id="altura" step="0.01" required />
 
-  <!-- ETAPA 2: Perguntas de Saúde -->
-  <div id="assessment" class="form-box">
-    <h2>Perguntas de Saúde</h2>
-    <!-- Perguntas em bloco único -->
-    <div class="question-block">
-      <label for="sexo">1. Qual o seu sexo biológico?</label>
-      <select id="sexo">
-        <option value="">Selecione</option>
-        <option value="masculino">Masculino</option>
-        <option value="feminino">Feminino</option>
-        <option value="outros">Outros</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="idade">2. Qual a sua Idade (em anos)?</label>
-      <input type="number" id="idade" />
-    </div>
-    <div class="question-block">
-      <label for="altura">3. Altura (em metros. ex: 1.65)</label>
-      <input type="text" id="altura" />
-    </div>
-    <div class="question-block">
-      <label for="peso">4. Qual o seu Peso (em kg)?</label>
-      <input type="number" id="peso" />
-    </div>
-    <div class="question-block">
-      <label for="calca">5. Tamanho da calça (BR)</label>
-      <input type="text" id="calca" />
-    </div>
-    <div class="question-block">
-      <label for="dores">6. Sente dores frequentes no corpo?</label>
-      <select id="dores">
-        <option value="">Selecione</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="atividadeFisica">7. Frequência de atividade física?</label>
-      <select id="atividadeFisica">
-        <option value="">Selecione</option>
-        <option value="Nunca">Nunca</option>
-        <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
-        <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="faltaFolego">8. Falta de fôlego ao subir escadas?</label>
-      <select id="faltaFolego">
-        <option value="">Selecione</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="dorme">9. Dorme pelo menos 7h por noite?</label>
-      <select id="dorme">
-        <option value="">Selecione</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="ansiedade">10. Se sentiu ansioso ou deprimido frequentemente nos últimos 2 meses?</label>
-      <select id="ansiedade">
-        <option value="">Selecione</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="alcool">11. Frequência do consumo de álcool?</label>
-      <select id="alcool">
-        <option value="">Selecione</option>
-        <option value="Nunca">Nunca</option>
-        <option value="1 ou 2 vezes por semana">1 ou 2 vezes por semana</option>
-        <option value="3 ou mais vezes por semana">3 ou mais vezes por semana</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="tabaco">12. Fuma ou usa produtos de tabaco?</label>
-      <select id="tabaco">
-        <option value="">Selecione</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="frutasVegetais">13. Come frutas e vegetais pelo menos 5x por semana?</label>
-      <select id="frutasVegetais">
-        <option value="">Selecione</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
-    <div class="question-block">
-      <label for="fastFood">14. Consome fast food ou ultraprocessados mais de 3x por semana?</label>
-      <select id="fastFood">
-        <option value="">Selecione</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
+  <label for="calca">Tamanho da calça (BR)</label>
+  <input type="number" id="calca" required />
+
+  <!-- 🌪️ Sono -->
+  <label for="sono_horas">Quantas horas você dorme por noite?</label>
+  <select id="sono_horas">
+    <option value="<5h"><5h</option>
+    <option value="5-6h">5-6h</option>
+    <option value="6-7h">6-7h</option>
+    <option value="7h+">7h+</option>
+  </select>
+
+  <label for="sono_qualidade">Qualidade do seu sono</label>
+  <select id="sono_qualidade">
+    <option value="ruim">Ruim</option>
+    <option value="regular">Regular</option>
+    <option value="boa">Boa</option>
+    <option value="muito boa">Muito boa</option>
+  </select>
+
+  <!-- 🩺 Saúde -->
+  <label for="checkup">Fez check-up no último ano?</label>
+  <select id="checkup">
+    <option value="nao">Não</option>
+    <option value="parcial">Parcial</option>
+    <option value="sim">Sim</option>
+  </select>
+
+  <label for="sintomas">Sintomas frequentes?</label>
+  <select id="sintomas">
+    <option value="frequente">Sim, frequentes</option>
+    <option value="ocasional">Ocasionalmente</option>
+    <option value="raro">Raramente</option>
+    <option value="nao">Não</option>
+  </select>
+
+  <label for="acompanhamento">Acompanha seus exames?</label>
+  <select id="acompanhamento">
+    <option value="nao">Não</option>
+    <option value="mais ou menos">Mais ou menos</option>
+    <option value="sim">Sim</option>
+  </select>
+
+  <!-- 🫫 Saúde Mental -->
+  <label for="ansiedade">Se sentiu ansioso nas últimas 2 semanas?</label>
+  <select id="ansiedade">
+    <option value="sempre">Quase todos os dias</option>
+    <option value="varias">Várias vezes</option>
+    <option value="poucas">Poucas vezes</option>
+    <option value="nao">Não</option>
+  </select>
+
+  <label for="tristeza">Se sentiu triste ou desmotivado?</label>
+  <select id="tristeza">
+    <option value="sempre">Quase todos os dias</option>
+    <option value="varias">Várias vezes</option>
+    <option value="poucas">Poucas vezes</option>
+    <option value="nao">Não</option>
+  </select>
+
+  <!-- 🌿 Bem-estar -->
+  <label for="prazer">Teve momentos de prazer?</label>
+  <select id="prazer">
+    <option value="nao">Não</option>
+    <option value="raramente">Raramente</option>
+    <option value="algumas">Algumas vezes</option>
+    <option value="frequentemente">Frequentemente</option>
+  </select>
+
+  <label for="energia">Como avalia sua energia no dia a dia?</label>
+  <select id="energia">
+    <option value="muito baixa">Muito baixa</option>
+    <option value="baixa">Baixa</option>
+    <option value="moderada">Moderada</option>
+    <option value="alta">Alta</option>
+  </select>
+
+  <!-- 🍎 Nutrição -->
+  <label for="frutas">Consome frutas e vegetais diariamente?</label>
+  <select id="frutas">
+    <option value="nao">Não</option>
+    <option value="1-3">1 a 3x/semana</option>
+    <option value="quase">Quase todos os dias</option>
+    <option value="sim">Todo dia</option>
+  </select>
+
+  <label for="ultraprocessados">Refeições ultraprocessadas/semana?</label>
+  <select id="ultraprocessados">
+    <option value=">10">Mais de 10</option>
+    <option value="7-9">7 a 9</option>
+    <option value="3-6">3 a 6</option>
+    <option value="0-2">0 a 2</option>
+  </select>
+
+  <!-- 🏃 Atividade Física -->
+  <label for="frequencia_atividade">Dias por semana com atividade física?</label>
+  <select id="frequencia_atividade">
+    <option value="0">0</option>
+    <option value="1-2">1-2</option>
+    <option value="3-4">3-4</option>
+    <option value="5+">5+</option>
+  </select>
+
+  <label for="duracao_atividade">Tempo total semanal (moderada/vigorosa)</label>
+  <select id="duracao_atividade">
+    <option value="<30min">Menos de 30 min</option>
+    <option value="30-60min">30 a 60 min</option>
+    <option value="1-2h">1 a 2 horas</option>
+    <option value="3h+">Mais de 3 horas</option>
+  </select>
 
     <button class="button" onclick="submitAnswers()">Enviar Respostas</button>
   </div>
@@ -323,8 +329,7 @@
     async function submitAnswers() {
       // Validação: verificar se todos os campos foram preenchidos
       const requiredIds = [
-        'sexo','idade','altura','peso','calca','dores','atividadeFisica',
-        'faltaFolego','dorme','ansiedade','alcool','tabaco','frutasVegetais','fastFood'
+        'sexo','idade','altura','peso','calca','sexo','sono horas','sono qualidade','checkup','sintomas','acompanhamento','ansiedade','tristeza','prazer','energia','frutas','ultraprocessados','frequencia_atividade','duracao_atividade'
       ];
       for (let id of requiredIds) {
         const val = document.getElementById(id).value;
